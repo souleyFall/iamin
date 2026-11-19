@@ -1,0 +1,32 @@
+# Feuille de route
+
+Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à jour à chaque fusion.
+
+## Version 0.1.0 : élimination directe et ligue
+
+| #   | PR                                                                                | État     |
+| --- | --------------------------------------------------------------------------------- | -------- |
+| 1   | `chore` : fondations (dépôt, qualité, CI, hook pre-push, documents)               | en cours |
+| 2   | `feat(engine)` : arbre d'élimination directe, byes, tirage vérifiable             | prévue   |
+| 3   | `feat(engine)` : ligue (tournoi à la ronde, classement, départages)               | prévue   |
+| 4   | `feat(engine)` : générateurs de texte pour le chat                                | prévue   |
+| 5   | `chore(api)` : API NestJS, PostgreSQL, Prisma, Docker Compose                     | prévue   |
+| 6   | `feat(auth)` : sessions, argon2id, CSRF, invitations, tickets de réinitialisation | prévue   |
+| 7   | `feat(groups)` : groupes, rôles, garde d'appartenance, tests d'accès croisé       | prévue   |
+| 8   | `feat(tournaments)` : création, inscriptions, liste d'attente, pointage           | prévue   |
+| 9   | `feat(matches)` : tirage, scores, forfaits, remplacements                         | prévue   |
+| 10  | `feat(relay)` : relais entre admins, journal d'événements                         | prévue   |
+| 11  | `feat(live)` : page publique et SSE                                               | prévue   |
+| 12  | `feat(web)` : interface admin (jetons de design, écrans de la maquette)           | prévue   |
+| 13  | `feat(web)` : interface publique, PWA installable                                 | prévue   |
+| 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes        | prévue   |
+| 15  | `docs(security)` : audit final, registre des risques, registre des traitements    | prévue   |
+
+## Après
+
+- 0.2.0 : tournoi classique (poules puis élimination), notifications.
+- 0.3.0 : tournoi au mérite (cumul de points sur plusieurs matchs, sans élimination), partage en image.
+- 0.4.0 : comptes joueurs optionnels.
+- 0.5.0 : annuaire de groupes (public ou privé, filtres, règles, conditions d'accès).
+- 0.6.0 : commentaires, demandes d'adhésion, listing de tournois.
+- 1.0.0 : stabilisé avec de vrais groupes.

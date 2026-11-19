@@ -1,0 +1,15 @@
+# Rien de ceci ne doit entrer dans une image : secrets, historique,
+# dépendances locales, cours personnel.
+.git
+.github
+.githooks
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+# Client Prisma généré : l'image le régénère à partir du schéma.
+apps/api/src/generated
+docs/cours
+docs/revues
+backups

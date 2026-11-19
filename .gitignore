@@ -1,0 +1,27 @@
+# Secrets : ne jamais les commiter
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Cours personnel : reste sur ton ordinateur, jamais envoyé sur GitHub
+docs/cours/
+
+# Revues de code : journal personnel, reste sur ton ordinateur
+docs/revues/
+
+# Visites guidées du code (skill /visite) : fichiers personnels générés
+.claude/visites/
+.claude/settings.local.json
+
+# Client Prisma généré : régénéré à partir du schéma
+apps/api/src/generated/
+
+# Sauvegardes de la base (données personnelles)
+backups/
