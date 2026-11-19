@@ -1,0 +1,16 @@
+{
+  "name": "@iamin/engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Moteur de tournoi d'i-am-in : TypeScript pur, sans dépendance, sans accès réseau ni base.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}
