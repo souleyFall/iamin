@@ -64,3 +64,13 @@ Nom : **i-am-in** (identifiant technique `iamin`). Aucun logo, nom de marque ou 
 ## D12. Direction visuelle « pendule »
 
 Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police Doto), touches larges, thèmes sombre et clair. Une seule couleur chaude (ambre) pour ce qui est en direct ou en attente. Aucun statut porté par la couleur seule. Maquettes dans l'artefact de design ; les jetons sont repris dans `apps/web`.
+
+## D13. Authentification : sessions côté serveur, sans e-mail
+
+- **Sessions en base** : jeton aléatoire de 256 bits dans un cookie `httpOnly` (`__Host-` avec HTTPS, `SameSite=Lax`), seule son empreinte SHA-256 est stockée. Durée absolue de 7 jours, jeton neuf à chaque connexion, révocables (déconnexion, changement ou réinitialisation de mot de passe).
+- **Mots de passe** : argon2id (19 Mio, 2 itérations, 1 voie, valeurs OWASP), 12 caractères au minimum sans règle de composition.
+- **CSRF** : deux couches. L'en-tête `Origin`, s'il est présent, doit être celui de l'interface ; toute écriture authentifiée doit renvoyer le jeton propre à la session (`x-csrf-token`).
+- **Pas d'e-mail dans la version 0.1.0** : minimisation des données (RGPD) et aucun service d'envoi à exploiter. Le contact passe par Plato : le propriétaire reçoit un ticket, vérifie l'identité via le pseudo Plato, puis transmet un lien de réinitialisation (une heure, usage unique).
+- **Invitations** : lien à usage unique de 7 jours, jeton stocké haché. Le propriétaire invite des créateurs de groupe ; ceux-ci inviteront leurs admins avec les groupes (PR 7).
+- **Limites de débit** : par adresse IP sur les routes sensibles, et par compte (10 échecs en 15 minutes) pour les attaques réparties. Compromis assumé : on peut bloquer un compte 15 minutes en s'y trompant exprès. État en mémoire, donc une seule instance d'API (à revoir sinon).
+- **Premier compte** : le propriétaire se crée en ligne de commande (`create-owner`), mot de passe par variable d'environnement, jamais par argument.

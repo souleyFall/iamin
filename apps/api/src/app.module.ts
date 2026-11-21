@@ -1,4 +1,14 @@
 import { Module, type DynamicModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { AuthGuard, OriginGuard, RolesGuard } from './auth/guards';
+import { InvitationsController } from './auth/invitations.controller';
+import { InvitationsService } from './auth/invitations.service';
+import { ResetService } from './auth/reset.service';
+import { SessionService } from './auth/session.service';
+import { TicketsController } from './auth/tickets.controller';
 import type { AppConfig } from './config';
 import { APP_CONFIG } from './config.token';
 import { HealthController } from './health.controller';
@@ -9,8 +19,29 @@ export class AppModule {
   static register(config: AppConfig): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController],
-      providers: [{ provide: APP_CONFIG, useValue: config }, PrismaService],
+      imports: [
+        ThrottlerModule.forRoot({
+          // Limite générale par adresse IP ; les routes sensibles ont des limites plus basses.
+          throttlers: [{ ttl: 60_000, limit: 120 }],
+          // Les tests enchaînent des dizaines de connexions : seul NODE_ENV=test les exempte,
+          // et la configuration refuse déjà un cookie non Secure en production.
+          skipIf: () => config.nodeEnv === 'test',
+        }),
+      ],
+      controllers: [HealthController, AuthController, InvitationsController, TicketsController],
+      providers: [
+        { provide: APP_CONFIG, useValue: config },
+        PrismaService,
+        SessionService,
+        AuthService,
+        InvitationsService,
+        ResetService,
+        // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.
+        { provide: APP_GUARD, useClass: ThrottlerGuard },
+        { provide: APP_GUARD, useClass: OriginGuard },
+        { provide: APP_GUARD, useClass: AuthGuard },
+        { provide: APP_GUARD, useClass: RolesGuard },
+      ],
     };
   }
 }

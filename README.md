@@ -25,7 +25,27 @@ Lancer l'API en local :
 cp .env.example .env              # puis remplis POSTGRES_PASSWORD et le mot de passe de DATABASE_URL
 docker compose up -d --wait       # PostgreSQL, accessible depuis cette machine uniquement
 pnpm --filter @iamin/api build
+pnpm --filter @iamin/api exec prisma migrate deploy   # crée les tables
 pnpm --filter @iamin/api start    # puis http://localhost:3000/health
+```
+
+Créer le compte du propriétaire (le premier compte : personne ne peut l'inviter). Le mot de passe passe par une variable d'environnement, jamais par un argument, pour ne rester ni dans la liste des processus ni dans l'historique du terminal :
+
+```powershell
+$env:IAMIN_OWNER_PASSWORD = 'un mot de passe de 12 caractères ou plus'
+node apps/api/dist/scripts/create-owner.js mon-identifiant MonPseudoPlato
+Remove-Item env:IAMIN_OWNER_PASSWORD
+```
+
+Mot de passe perdu : même commande avec le même identifiant et `--reset-password`.
+
+Tests d'intégration (vraie base) : ils tournent en CI. En local, ils sont ignorés tant que `TEST_DATABASE_URL` n'est pas défini, et refusent de tourner sur une base dont le nom ne finit pas par `_test` (ils vident les tables).
+
+```bash
+docker compose exec db psql -U iamin -d postgres -c "CREATE DATABASE iamin_test"
+# TEST_DATABASE_URL = DATABASE_URL avec le nom de base iamin_test
+pnpm --filter @iamin/api exec prisma migrate deploy   # avec DATABASE_URL pointant sur iamin_test
+pnpm test
 ```
 
 ## Pour aller plus loin
