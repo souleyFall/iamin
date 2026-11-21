@@ -6,6 +6,8 @@
     "node": ">=24"
   },
   "scripts": {
+    "generate": "pnpm -r --if-present generate",
+    "postinstall": "pnpm generate",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

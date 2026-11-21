@@ -1,3 +1,10 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# pnpm 10 n'exécute aucun script d'installation par défaut. Seuls ceux-ci sont autorisés :
+# ils téléchargent les moteurs de requêtes de Prisma.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
