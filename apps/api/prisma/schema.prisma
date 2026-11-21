@@ -1,0 +1,14 @@
+// Schéma de la base d'i-am-in. Les modèles arrivent avec les PR qui en ont besoin
+// (comptes et sessions : PR 6 ; groupes : PR 7 ; tournois : PR 8, etc.).
+// Les migrations seront versionnées dans `prisma/migrations` dès le premier modèle.
+
+generator client {
+  // Le client est généré dans node_modules (`pnpm generate`, lancé à l'installation) :
+  // jamais versionné, et chargé par `@prisma/client` aussi bien en développement qu'en production.
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

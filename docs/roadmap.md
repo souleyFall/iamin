@@ -9,8 +9,8 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 1   | `chore` : fondations (dépôt, qualité, CI, hook pre-push, documents)               | fusionnée |
 | 2   | `feat(engine)` : arbre d'élimination directe, byes, tirage vérifiable             | fusionnée |
 | 3   | `feat(engine)` : ligue (tournoi à la ronde, classement, départages)               | fusionnée |
-| 4   | `feat(engine)` : générateurs de texte pour le chat                                | en cours  |
-| 5   | `chore(api)` : API NestJS, PostgreSQL, Prisma, Docker Compose                     | prévue    |
+| 4   | `feat(engine)` : générateurs de texte pour le chat                                | fusionnée |
+| 5   | `chore(api)` : API NestJS, PostgreSQL, Prisma, Docker Compose                     | en cours  |
 | 6   | `feat(auth)` : sessions, argon2id, CSRF, invitations, tickets de réinitialisation | prévue    |
 | 7   | `feat(groups)` : groupes, rôles, garde d'appartenance, tests d'accès croisé       | prévue    |
 | 8   | `feat(tournaments)` : création, inscriptions, liste d'attente, pointage           | prévue    |

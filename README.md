@@ -15,8 +15,17 @@ React (Vite, PWA), NestJS, PostgreSQL (Prisma), monorepo pnpm. Détail et raison
 Prérequis : Node 24, pnpm, Docker Desktop.
 
 ```bash
-pnpm install      # installe aussi les hooks Git (.githooks)
+pnpm install      # installe les hooks Git (.githooks) et génère le client Prisma
 pnpm check        # lint, formatage, types, tests, build
+```
+
+Lancer l'API en local :
+
+```bash
+cp .env.example .env              # puis remplis POSTGRES_PASSWORD et le mot de passe de DATABASE_URL
+docker compose up -d --wait       # PostgreSQL, accessible depuis cette machine uniquement
+pnpm --filter @iamin/api build
+pnpm --filter @iamin/api start    # puis http://localhost:3000/health
 ```
 
 ## Pour aller plus loin

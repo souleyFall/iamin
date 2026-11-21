@@ -16,4 +16,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
-  # Les entrées docker et docker-compose s'ajoutent avec les Dockerfile (PR dédiée).
+
+  # L'image PostgreSQL du docker-compose.yml.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+  # L'entrée docker (Dockerfile) s'ajoute avec les images de production (PR 14).
