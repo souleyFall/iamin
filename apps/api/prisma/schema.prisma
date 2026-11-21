@@ -1,6 +1,6 @@
 // Schéma de la base d'i-am-in. Les modèles arrivent avec les PR qui en ont besoin
 // (comptes et sessions : PR 6 ; groupes : PR 7 ; tournois : PR 8, etc.).
-// Les migrations seront versionnées dans `prisma/migrations` dès le premier modèle.
+// Chaque changement passe par une migration versionnée dans `prisma/migrations`.
 
 generator client {
   // Le client est généré dans node_modules (`pnpm generate`, lancé à l'installation) :
@@ -11,4 +11,84 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLATFORM_OWNER // le propriétaire de la plateforme
+  GROUP_SUPER_ADMIN // créateur d'un groupe : invite ses admins, peut reprendre le relais
+  ADMIN // admin d'un groupe
+}
+
+enum ResetTicketStatus {
+  OPEN // demande reçue, en attente du propriétaire
+  ISSUED // le propriétaire a émis un jeton à usage unique
+  USED // mot de passe changé
+  CLOSED // clos sans suite par le propriétaire
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  /// Identifiant de connexion, toujours en minuscules.
+  username          String   @unique
+  /// Pseudo Plato : sert au propriétaire à vérifier l'identité lors d'une réinitialisation.
+  platoUsername     String
+  /// Empreinte argon2id : jamais le mot de passe.
+  passwordHash      String
+  role              Role
+  createdAt         DateTime @default(now())
+  passwordChangedAt DateTime @default(now())
+
+  sessions           Session[]
+  resetTickets       ResetTicket[]
+  invitationsCreated Invitation[]  @relation("InvitationCreator")
+  invitationUsed     Invitation?   @relation("InvitationUser")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  /// SHA-256 du jeton du cookie : une fuite de la base ne donne pas de session utilisable.
+  tokenHash  String   @unique
+  /// Jeton anti-CSRF propre à cette session.
+  csrfToken  String
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Invitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  /// SHA-256 du jeton du lien d'invitation. Le jeton lui-même n'est montré qu'une fois.
+  tokenHash   String    @unique
+  /// Rôle que recevra la personne invitée.
+  role        Role
+  createdById String    @db.Uuid
+  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?   @unique @db.Uuid
+  usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+}
+
+model ResetTicket {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @db.Uuid
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    ResetTicketStatus @default(OPEN)
+  createdAt DateTime          @default(now())
+  /// SHA-256 du jeton émis par le propriétaire (à usage unique, courte durée).
+  tokenHash String?           @unique
+  issuedAt  DateTime?
+  expiresAt DateTime?
+  closedAt  DateTime?
+
+  @@index([userId])
+  @@index([status])
 }

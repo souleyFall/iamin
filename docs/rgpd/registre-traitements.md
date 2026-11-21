@@ -14,10 +14,11 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | -------------------- | ------------------------------------------------------------------------------------- |
 | Finalité             | Authentifier les admins et super admins de groupe, attribuer les rôles                |
 | Base légale          | Intérêt légitime (fournir le service demandé par l'admin)                             |
-| Données              | Identifiant, adresse e-mail, pseudo Plato, empreinte argon2id du mot de passe, rôle   |
+| Données              | Identifiant, pseudo Plato, empreinte argon2id du mot de passe, rôle                   |
 | Personnes concernées | Admins invités                                                                        |
 | Destinataires        | Le propriétaire de la plateforme ; aucun tiers                                        |
 | Conservation         | Tant que le compte existe ; suppression sur demande ; sessions expirées purgées (7 j) |
+| Minimisation         | Aucun e-mail, aucune adresse IP ni agent utilisateur stockés avec les sessions        |
 | Mesures de sécurité  | argon2id, sessions révocables, accès filtré par groupe (voir registre des risques)    |
 
 ## Traitement 2 : inscriptions des joueurs

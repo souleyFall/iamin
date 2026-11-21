@@ -26,6 +26,23 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Base jetable pour les tests d'intégration (créée vide à chaque exécution, jamais réutilisée).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: iamin
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: iamin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U iamin -d iamin_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://iamin:ci-test-only@localhost:5432/iamin_test
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -39,6 +56,10 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
+      # Applique les migrations versionnées sur la base de test : vérifie aussi qu'elles s'appliquent.
+      - run: pnpm --filter @iamin/api exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
       - run: pnpm test
       - run: pnpm build
 
