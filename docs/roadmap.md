@@ -7,8 +7,8 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | #   | PR                                                                                | État      |
 | --- | --------------------------------------------------------------------------------- | --------- |
 | 1   | `chore` : fondations (dépôt, qualité, CI, hook pre-push, documents)               | fusionnée |
-| 2   | `feat(engine)` : arbre d'élimination directe, byes, tirage vérifiable             | en cours  |
-| 3   | `feat(engine)` : ligue (tournoi à la ronde, classement, départages)               | prévue    |
+| 2   | `feat(engine)` : arbre d'élimination directe, byes, tirage vérifiable             | fusionnée |
+| 3   | `feat(engine)` : ligue (tournoi à la ronde, classement, départages)               | en cours  |
 | 4   | `feat(engine)` : générateurs de texte pour le chat                                | prévue    |
 | 5   | `chore(api)` : API NestJS, PostgreSQL, Prisma, Docker Compose                     | prévue    |
 | 6   | `feat(auth)` : sessions, argon2id, CSRF, invitations, tickets de réinitialisation | prévue    |
