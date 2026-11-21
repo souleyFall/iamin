@@ -152,7 +152,7 @@ export interface ResolvedBracket {
   champion: string | null;
 }
 
-function assertScore(matchId: string, score: Score): void {
+export function assertScore(matchId: string, score: Score): void {
   const valid = (n: number) => Number.isInteger(n) && n >= 0;
   if (!valid(score.a) || !valid(score.b)) {
     throw new EngineError(`Score invalide pour ${matchId} : des entiers positifs sont attendus.`);
