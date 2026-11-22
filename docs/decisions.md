@@ -74,3 +74,13 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Invitations** : lien à usage unique de 7 jours, jeton stocké haché. Le propriétaire invite des créateurs de groupe ; ceux-ci inviteront leurs admins avec les groupes (PR 7).
 - **Limites de débit** : par adresse IP sur les routes sensibles, et par compte (10 échecs en 15 minutes) pour les attaques réparties. Compromis assumé : on peut bloquer un compte 15 minutes en s'y trompant exprès. État en mémoire, donc une seule instance d'API (à revoir sinon).
 - **Premier compte** : le propriétaire se crée en ligne de commande (`create-owner`), mot de passe par variable d'environnement, jamais par argument.
+
+## D14. Groupes : le rôle est porté par l'appartenance
+
+- **Deux niveaux de rôle** : sur la plateforme (`PLATFORM_OWNER` ou `MEMBER`) et dans chaque groupe (`SUPER_ADMIN` ou `ADMIN`, table `GroupMember`). Un compte peut être super admin d'un groupe et simple admin d'un autre. Cela remplace les rôles globaux de D13 (migration cassante, sans conséquence avant la mise en ligne).
+- **Seule porte d'entrée vers les données d'un groupe : `GroupGuard`.** Le groupe est lu dans le chemin (`/groups/:groupId/…`), jamais dans le corps de la requête, et l'appartenance est vérifiée à chaque appel : retirer un membre lui ferme l'accès immédiatement, sans attendre la fin de sa session.
+- **404 uniforme** : un compte qui n'est pas membre reçoit exactement la même réponse que pour un groupe inexistant ou un identifiant mal formé. Impossible de deviner quels groupes existent. Un membre dont le rôle ne suffit pas reçoit 403.
+- **Le propriétaire de la plateforme** crée les groupes, voit la liste de tous et peut réinviter un super admin (assistance), mais ne lit pas les données internes des groupes : `allowOwner` est un choix explicite par route.
+- **Personne ne s'attribue un rôle supérieur** : un super admin n'invite que des admins ; seul le propriétaire invite un super admin. Une invitation vise un groupe et un rôle précis, et ne sert qu'une fois.
+- **Un compte existant rejoint un autre groupe** avec `POST /invitations/join` (session ouverte), sans créer de second compte.
+- **Règle pour les PR suivantes** : toute route qui touche aux données d'un groupe (tournois, inscriptions, matchs…) passe par `GroupGuard` et s'accompagne d'un test d'accès croisé.

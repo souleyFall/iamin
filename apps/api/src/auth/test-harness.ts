@@ -2,6 +2,7 @@
  * Outils des tests d'intégration : une vraie API contre une vraie base PostgreSQL de test.
  * Ce fichier n'est pas compilé dans `dist` (voir tsconfig.build.json).
  */
+import { randomBytes } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaClient, type Role } from '@prisma/client';
@@ -13,6 +14,12 @@ import { hashPassword } from './crypto';
 export const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
 export const WEB_ORIGIN = 'http://localhost:5173';
+
+/**
+ * Mot de passe de test tiré au hasard à chaque exécution : aucun mot de passe écrit en dur dans
+ * le dépôt (les détecteurs de secrets ne distinguent pas un exemple d'un vrai mot de passe).
+ */
+export const randomPassword = (): string => `pw-${randomBytes(12).toString('hex')}`;
 
 /**
  * Garde-fou : les tests vident les tables. Ils refusent de tourner si le nom de la base
@@ -64,7 +71,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
 
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "GroupMember", "Group", "User" RESTART IDENTITY CASCADE',
   );
 }
 

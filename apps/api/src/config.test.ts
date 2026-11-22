@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig } from './config';
 
 const valid = {
-  DATABASE_URL: 'postgresql://u:p@localhost:5432/db',
+  DATABASE_URL: 'postgresql://u:p@127.0.0.1:5432/db',
   WEB_ORIGIN: 'http://localhost:5173',
 };
 

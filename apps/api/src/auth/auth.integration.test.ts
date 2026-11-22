@@ -143,7 +143,7 @@ describe.skipIf(!testDatabaseUrl)('authentification (base réelle)', () => {
     it('bloque un compte après 10 échecs, même avec le bon mot de passe ensuite', async () => {
       // Compte dédié : le verrouillage est gardé en mémoire par l'API pour toute la durée du
       // fichier de tests, il ne doit pas gêner les autres tests.
-      await createUser(t.prisma, { username: 'cible', password: PASSWORD, role: Role.ADMIN });
+      await createUser(t.prisma, { username: 'cible', password: PASSWORD, role: Role.MEMBER });
       for (let i = 0; i < 10; i++) {
         expect((await client().login('cible', `mauvais ${i}`)).status).toBe(401);
       }
@@ -194,23 +194,15 @@ describe.skipIf(!testDatabaseUrl)('authentification (base réelle)', () => {
       expect((await new Client(t.url, undefined).login('owner', PASSWORD)).status).toBe(200);
     });
 
-    it('réserve les invitations et les tickets au propriétaire', async () => {
-      await createUser(t.prisma, {
-        username: 'chef',
-        password: PASSWORD,
-        role: Role.GROUP_SUPER_ADMIN,
-      });
-      await createUser(t.prisma, { username: 'adm', password: PASSWORD, role: Role.ADMIN });
+    it('réserve la création de groupe et les tickets au propriétaire', async () => {
+      await createUser(t.prisma, { username: 'simple', password: PASSWORD, role: Role.MEMBER });
       const anonymous = client();
-      expect((await anonymous.request('POST', '/invitations', {})).status).toBe(401);
+      expect((await anonymous.request('POST', '/groups', { name: 'Groupe' })).status).toBe(401);
       expect((await anonymous.request('GET', '/reset-tickets')).status).toBe(401);
 
-      for (const username of ['chef', 'adm']) {
-        const c = await loggedIn(username);
-        expect((await c.request('POST', '/invitations', {})).status).toBe(403);
-        expect((await c.request('GET', '/invitations')).status).toBe(403);
-        expect((await c.request('GET', '/reset-tickets')).status).toBe(403);
-      }
+      const c = await loggedIn('simple');
+      expect((await c.request('POST', '/groups', { name: 'Groupe' })).status).toBe(403);
+      expect((await c.request('GET', '/reset-tickets')).status).toBe(403);
     });
 
     it('la sonde /health reste publique', async () => {
@@ -255,125 +247,13 @@ describe.skipIf(!testDatabaseUrl)('authentification (base réelle)', () => {
   });
 
   // -----------------------------------------------------------------------------------------
-  describe('invitations', () => {
-    async function invite(c: Client) {
-      const reply = await c.request('POST', '/invitations', {});
-      expect(reply.status).toBe(201);
-      return reply.body as { id: string; token: string; url: string; role: string };
-    }
-    const accept = (token: string, overrides: Record<string, unknown> = {}) =>
-      client().request('POST', '/invitations/accept', {
-        token,
-        username: 'nouveau',
-        password: PASSWORD,
-        platoUsername: 'Nouveau_Plato',
-        ...overrides,
-      });
-
-    it('le propriétaire crée une invitation ; le jeton n’est stocké que haché', async () => {
-      await owner();
-      const c = await loggedIn('owner');
-      const inv = await invite(c);
-      expect(inv.role).toBe('GROUP_SUPER_ADMIN');
-      expect(inv.url).toBe(`${WEB_ORIGIN}/invitation/${inv.token}`);
-
-      const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
-      expect(row.tokenHash).toBe(sha256(inv.token));
-      expect(JSON.stringify(row)).not.toContain(inv.token);
-
-      const list = await c.request('GET', '/invitations');
-      expect(list.body).toHaveLength(1);
-      expect(JSON.stringify(list.body)).not.toContain(inv.token);
-    });
-
-    it('refuse d’inviter un autre rôle que créateur de groupe', async () => {
-      await owner();
-      const c = await loggedIn('owner');
-      for (const role of ['PLATFORM_OWNER', 'ADMIN']) {
-        expect((await c.request('POST', '/invitations', { role })).status).toBe(400);
-      }
-    });
-
-    it('crée le compte, ouvre la session et consomme l’invitation', async () => {
-      await owner();
-      const inv = await invite(await loggedIn('owner'));
-      const reply = await accept(inv.token);
-      expect(reply.status).toBe(201);
-      expect(reply.body).toMatchObject({
-        user: { username: 'nouveau', role: 'GROUP_SUPER_ADMIN', platoUsername: 'Nouveau_Plato' },
-      });
-      expect(reply.setCookies[0]).toMatch(/^iamin_session=/);
-
-      const user = await t.prisma.user.findUniqueOrThrow({ where: { username: 'nouveau' } });
-      expect(user.passwordHash).toMatch(/^\$argon2id\$/);
-      const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
-      expect(row.usedAt).not.toBeNull();
-      expect(row.usedById).toBe(user.id);
-    });
-
-    it('ne se réutilise pas', async () => {
-      await owner();
-      const inv = await invite(await loggedIn('owner'));
-      expect((await accept(inv.token)).status).toBe(201);
-      expect((await accept(inv.token, { username: 'autre' })).status).toBe(400);
-      expect(await t.prisma.user.count({ where: { role: Role.GROUP_SUPER_ADMIN } })).toBe(1);
-    });
-
-    it('refuse un jeton inconnu, expiré ou annulé avec le même message', async () => {
-      await owner();
-      const c = await loggedIn('owner');
-      const unknown = await accept('x'.repeat(43));
-
-      const expired = await invite(c);
-      await t.prisma.invitation.update({
-        where: { id: expired.id },
-        data: { expiresAt: new Date(Date.now() - 1000) },
-      });
-      const revoked = await invite(c);
-      expect((await c.request('DELETE', `/invitations/${revoked.id}`)).status).toBe(200);
-
-      const replies = [unknown, await accept(expired.token), await accept(revoked.token)];
-      for (const r of replies) expect(r.status).toBe(400);
-      expect(new Set(replies.map((r) => JSON.stringify(r.body))).size).toBe(1);
-      expect(await t.prisma.user.count()).toBe(1); // le propriétaire seul
-    });
-
-    it('deux personnes qui utilisent le lien en même temps : un seul compte', async () => {
-      await owner();
-      const inv = await invite(await loggedIn('owner'));
-      const [a, b] = await Promise.all([
-        accept(inv.token, { username: 'premier' }),
-        accept(inv.token, { username: 'second' }),
-      ]);
-      expect([a.status, b.status].sort()).toEqual([201, 400]);
-      expect(await t.prisma.user.count({ where: { role: Role.GROUP_SUPER_ADMIN } })).toBe(1);
-    });
-
-    it('un identifiant déjà pris donne 409 sans consommer l’invitation', async () => {
-      await owner();
-      const inv = await invite(await loggedIn('owner'));
-      expect((await accept(inv.token, { username: 'owner' })).status).toBe(409);
-      expect((await accept(inv.token, { username: 'libre' })).status).toBe(201);
-    });
-
-    it('valide les champs sans jamais renvoyer le mot de passe reçu', async () => {
-      await owner();
-      const inv = await invite(await loggedIn('owner'));
-      const reply = await accept(inv.token, { password: shortPassword, platoUsername: 'a\nb' });
-      expect(reply.status).toBe(400);
-      expect(JSON.stringify(reply.body)).not.toContain(shortPassword);
-      expect(await t.prisma.user.count()).toBe(1);
-    });
-  });
-
-  // -----------------------------------------------------------------------------------------
   describe('tickets de réinitialisation', () => {
     async function setup() {
       await owner();
       const user = await createUser(t.prisma, {
         username: 'chef',
         password: PASSWORD,
-        role: Role.GROUP_SUPER_ADMIN,
+        role: Role.MEMBER,
         platoUsername: 'Chef_Plato',
       });
       return { user, ownerClient: await loggedIn('owner') };

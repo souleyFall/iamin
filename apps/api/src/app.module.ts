@@ -12,6 +12,9 @@ import { TicketsController } from './auth/tickets.controller';
 import type { AppConfig } from './config';
 import { APP_CONFIG } from './config.token';
 import { HealthController } from './health.controller';
+import { GroupGuard } from './groups/group.guard';
+import { GroupsController } from './groups/groups.controller';
+import { GroupsService } from './groups/groups.service';
 import { PrismaService } from './prisma.service';
 
 @Module({})
@@ -28,7 +31,13 @@ export class AppModule {
           skipIf: () => config.nodeEnv === 'test',
         }),
       ],
-      controllers: [HealthController, AuthController, InvitationsController, TicketsController],
+      controllers: [
+        HealthController,
+        AuthController,
+        InvitationsController,
+        TicketsController,
+        GroupsController,
+      ],
       providers: [
         { provide: APP_CONFIG, useValue: config },
         PrismaService,
@@ -36,6 +45,9 @@ export class AppModule {
         AuthService,
         InvitationsService,
         ResetService,
+        GroupsService,
+        // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
+        GroupGuard,
         // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: APP_GUARD, useClass: OriginGuard },
