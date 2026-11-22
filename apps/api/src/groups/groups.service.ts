@@ -133,6 +133,17 @@ export class GroupsService {
     if (membership.role === GroupRole.SUPER_ADMIN) {
       throw new ConflictException('Un super admin ne peut pas être retiré du groupe');
     }
-    await this.prisma.groupMember.delete({ where: { id: membership.id } });
+    await this.prisma.$transaction([
+      this.prisma.groupMember.delete({ where: { id: membership.id } }),
+      // Un admin retiré ne garde pas la main (ni une proposition de relais) sur les tournois du groupe.
+      this.prisma.tournament.updateMany({
+        where: { groupId, holderId: userId },
+        data: { holderId: null },
+      }),
+      this.prisma.tournament.updateMany({
+        where: { groupId, handoverToId: userId },
+        data: { handoverToId: null },
+      }),
+    ]);
   }
 }

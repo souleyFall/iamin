@@ -16,12 +16,15 @@ import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
 import { PrismaService } from './prisma.service';
+import { EventsService } from './tournaments/events.service';
 import { MatchesController } from './tournaments/matches.controller';
 import { MatchesService } from './tournaments/matches.service';
 import {
   PublicTournamentsController,
   TournamentsController,
 } from './tournaments/tournaments.controller';
+import { RelayController } from './tournaments/relay.controller';
+import { RelayService } from './tournaments/relay.service';
 import { TournamentsService } from './tournaments/tournaments.service';
 
 @Module({})
@@ -46,6 +49,7 @@ export class AppModule {
         GroupsController,
         TournamentsController,
         MatchesController,
+        RelayController,
         PublicTournamentsController,
       ],
       providers: [
@@ -58,6 +62,8 @@ export class AppModule {
         GroupsService,
         TournamentsService,
         MatchesService,
+        EventsService,
+        RelayService,
         // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
         GroupGuard,
         // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.

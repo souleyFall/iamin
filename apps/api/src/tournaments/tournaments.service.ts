@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -15,6 +16,7 @@ import {
 } from '@prisma/client';
 import { newToken, sha256 } from '../auth/crypto';
 import { PrismaService } from '../prisma.service';
+import { EventsService } from './events.service';
 
 /** Inscriptions en attente de validation, par tournoi : borne le gain d'un robot sur le lien public (R8). */
 export const MAX_PENDING = 200;
@@ -56,20 +58,37 @@ const isUniqueViolation = (error: unknown): boolean =>
  */
 @Injectable()
 export class TournamentsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(EventsService) private readonly events: EventsService,
+  ) {}
 
   // ---------------------------------------------------------------------------------------------
   // Administration (groupe vérifié par GroupGuard)
   // ---------------------------------------------------------------------------------------------
 
+  /** Le créateur tient la main sur son tournoi (D5). */
   create(
     groupId: string,
+    actorId: string,
     input: { name: string; format: TournamentFormat; capacity: number; forfeitScore?: number },
   ) {
     assertLeagueSize(input.format, input.capacity);
-    return this.prisma.tournament.create({
-      data: { ...input, groupId, publicSlug: randomBytes(16).toString('base64url') },
-      select: tournamentSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.tournament.create({
+        data: {
+          ...input,
+          groupId,
+          holderId: actorId,
+          publicSlug: randomBytes(16).toString('base64url'),
+        },
+        select: tournamentSelect,
+      });
+      await this.events.record(tx, created.id, actorId, 'TOURNAMENT_CREATED', {
+        format: input.format,
+        capacity: input.capacity,
+      });
+      return created;
     });
   }
 
@@ -102,6 +121,7 @@ export class TournamentsService {
 
   async update(
     groupId: string,
+    actorId: string,
     tournamentId: string,
     input: {
       name?: string;
@@ -112,6 +132,7 @@ export class TournamentsService {
   ) {
     await this.prisma.$transaction(async (tx) => {
       const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertHolder(tournament, actorId);
       const drawn = !isOpen(tournament.status);
       if (drawn && (input.status !== undefined || input.capacity !== undefined)) {
         throw new ConflictException('Le tirage est fait : les places et la phase sont figées');
@@ -132,19 +153,21 @@ export class TournamentsService {
         }
       }
       await tx.tournament.update({ where: { id: tournamentId }, data: input });
-      await this.promoteFromWaitlist(tx, tournamentId);
+      await this.events.record(tx, tournamentId, actorId, 'TOURNAMENT_UPDATED', { ...input });
+      await this.promoteFromWaitlist(tx, tournamentId, actorId);
     });
     return this.get(groupId, tournamentId);
   }
 
   /** Un admin inscrit directement un joueur : déjà validé, donc accepté ou en liste d'attente. */
-  async addPlayer(groupId: string, tournamentId: string, platoName: string) {
+  async addPlayer(groupId: string, actorId: string, tournamentId: string, platoName: string) {
     return this.prisma
       .$transaction(async (tx) => {
         const tournament = await this.lockTournament(tx, groupId, tournamentId);
+        assertHolder(tournament, actorId);
         assertOpen(tournament.status);
         const status = await this.statusForValidated(tx, tournament);
-        return tx.registration.create({
+        const created = await tx.registration.create({
           data: {
             tournamentId,
             platoName,
@@ -154,14 +177,20 @@ export class TournamentsService {
           },
           select: registrationSelect,
         });
+        await this.events.record(tx, tournamentId, actorId, 'PLAYER_ADDED', {
+          registrationId: created.id,
+          status,
+        });
+        return created;
       })
       .catch(rethrowDuplicate);
   }
 
   /** Valide une inscription en attente : acceptée s'il reste de la place, sinon en liste d'attente. */
-  async accept(groupId: string, tournamentId: string, registrationId: string) {
+  async accept(groupId: string, actorId: string, tournamentId: string, registrationId: string) {
     return this.prisma.$transaction(async (tx) => {
       const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertHolder(tournament, actorId);
       assertOpen(tournament.status);
       const registration = await tx.registration.findFirst({
         where: { id: registrationId, tournamentId },
@@ -172,23 +201,30 @@ export class TournamentsService {
         throw new ConflictException('Cette inscription est déjà validée');
       }
       const status = await this.statusForValidated(tx, tournament);
-      return tx.registration.update({
+      const updated = await tx.registration.update({
         where: { id: registrationId },
         data: { status, validatedAt: new Date() },
         select: registrationSelect,
       });
+      await this.events.record(tx, tournamentId, actorId, 'PLAYER_ACCEPTED', {
+        registrationId,
+        status,
+      });
+      return updated;
     });
   }
 
   /** Pointage : seulement pour un joueur accepté, et seulement pendant la phase de pointage. */
   async setPresence(
     groupId: string,
+    actorId: string,
     tournamentId: string,
     registrationId: string,
     presence: Presence,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertHolder(tournament, actorId);
       if (tournament.status !== TournamentStatus.CHECK_IN) {
         throw new ConflictException('Le pointage n’est pas ouvert');
       }
@@ -200,24 +236,36 @@ export class TournamentsService {
       if (registration.status !== RegistrationStatus.ACCEPTED) {
         throw new ConflictException('Seuls les joueurs acceptés se pointent');
       }
-      return tx.registration.update({
+      const updated = await tx.registration.update({
         where: { id: registrationId },
         data: { presence },
         select: registrationSelect,
       });
+      await this.events.record(tx, tournamentId, actorId, 'PRESENCE_SET', {
+        registrationId,
+        presence,
+      });
+      return updated;
     });
   }
 
   /** Retire un joueur (la ligne est supprimée) ; le premier de la liste d'attente prend sa place. */
-  async removePlayer(groupId: string, tournamentId: string, registrationId: string) {
+  async removePlayer(
+    groupId: string,
+    actorId: string,
+    tournamentId: string,
+    registrationId: string,
+  ) {
     await this.prisma.$transaction(async (tx) => {
       const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertHolder(tournament, actorId);
       assertOpen(tournament.status, 'Utilisez le remplacement pour changer un joueur');
       const { count } = await tx.registration.deleteMany({
         where: { id: registrationId, tournamentId },
       });
       if (count === 0) throw new NotFoundException(REGISTRATION_NOT_FOUND);
-      await this.promoteFromWaitlist(tx, tournamentId);
+      await this.events.record(tx, tournamentId, actorId, 'PLAYER_REMOVED', { registrationId });
+      await this.promoteFromWaitlist(tx, tournamentId, actorId);
     });
   }
 
@@ -254,7 +302,7 @@ export class TournamentsService {
         if (pending >= MAX_PENDING) {
           throw new ConflictException('Trop d’inscriptions en attente, réessayez plus tard');
         }
-        return tx.registration.create({
+        const created = await tx.registration.create({
           data: {
             tournamentId: tournament.id,
             platoName,
@@ -264,6 +312,10 @@ export class TournamentsService {
           },
           select: registrationSelect,
         });
+        await this.events.record(tx, tournament.id, null, 'PLAYER_REGISTERED', {
+          registrationId: created.id,
+        });
+        return created;
       })
       .catch(rethrowDuplicate);
     return { registration, token };
@@ -316,7 +368,10 @@ export class TournamentsService {
       const tournament = await this.lockTournamentById(tx, row.tournamentId);
       assertOpen(tournament.status, 'Le tirage est fait : prévenez un admin pour vous retirer');
       await tx.registration.deleteMany({ where: { id: row.id } });
-      await this.promoteFromWaitlist(tx, row.tournamentId);
+      await this.events.record(tx, row.tournamentId, null, 'PLAYER_WITHDREW', {
+        registrationId: row.id,
+      });
+      await this.promoteFromWaitlist(tx, row.tournamentId, null);
     });
   }
 
@@ -340,7 +395,7 @@ export class TournamentsService {
   private async lockedTournament(tx: Tx, tournamentId: string) {
     return tx.tournament.findUniqueOrThrow({
       where: { id: tournamentId },
-      select: { id: true, capacity: true, status: true },
+      select: { id: true, capacity: true, status: true, holderId: true, handoverToId: true },
     });
   }
 
@@ -354,7 +409,7 @@ export class TournamentsService {
   }
 
   /** Fait passer en ACCEPTED les premiers de la liste d'attente tant qu'il reste de la place. */
-  private async promoteFromWaitlist(tx: Tx, tournamentId: string) {
+  private async promoteFromWaitlist(tx: Tx, tournamentId: string, actorId: string | null) {
     const tournament = await tx.tournament.findUniqueOrThrow({
       where: { id: tournamentId },
       select: { capacity: true },
@@ -375,6 +430,9 @@ export class TournamentsService {
       where: { id: { in: next.map((r) => r.id) } },
       data: { status: RegistrationStatus.ACCEPTED },
     });
+    await this.events.record(tx, tournamentId, actorId, 'PLAYER_PROMOTED', {
+      registrationIds: next.map((r) => r.id),
+    });
   }
 }
 
@@ -389,7 +447,19 @@ const tournamentSelect = {
   createdAt: true,
   drawnAt: true,
   drawSeed: true,
+  holder: { select: { id: true, username: true } },
+  handoverTo: { select: { id: true, username: true } },
 } as const;
+
+/** Écrire sur un tournoi demande d'en tenir la main (D5) ; les autres admins du groupe lisent. */
+export function assertHolder(tournament: { holderId: string | null }, actorId: string): void {
+  if (tournament.holderId === actorId) return;
+  throw new ForbiddenException(
+    tournament.holderId === null
+      ? 'Personne ne tient la main : prenez-la pour modifier ce tournoi'
+      : 'Un autre admin tient la main sur ce tournoi',
+  );
+}
 
 /** Une ligue de N joueurs a N×(N-1)/2 matchs : on borne pour garder un calendrier lisible. */
 export const MAX_LEAGUE_PLAYERS = 32;

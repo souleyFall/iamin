@@ -26,14 +26,18 @@ import {
   type Score,
 } from '@iamin/engine';
 import { PrismaService } from '../prisma.service';
-import { TournamentsService } from './tournaments.service';
+import { EventsService } from './events.service';
+import { assertHolder, TournamentsService } from './tournaments.service';
 
 type Tx = Prisma.TransactionClient;
 
 const NOT_DRAWN = 'Le tirage n’est pas fait';
 const MATCH_NOT_FOUND = 'Match introuvable';
 
-export type ResultInput = { a: number; b: number } | { forfeit: 'a' | 'b' };
+/** version : celle du score que l'écran affichait (0 s'il n'y en avait pas) ; voir setResult. */
+export type ResultInput = ({ a: number; b: number } | { forfeit: 'a' | 'b' }) & {
+  version?: number;
+};
 
 interface Drawn {
   id: string;
@@ -91,6 +95,7 @@ export class MatchesService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(TournamentsService) private readonly tournaments: TournamentsService,
+    @Inject(EventsService) private readonly events: EventsService,
   ) {}
 
   /**
@@ -98,9 +103,9 @@ export class MatchesService {
    * ne peut pas « essayer » des graines jusqu'à obtenir le tirage qu'il veut. Elle est publiée
    * avec la liste triée des joueurs, donc n'importe qui peut refaire le tirage et comparer.
    */
-  async draw(groupId: string, tournamentId: string, legs: 1 | 2 = 1) {
+  async draw(groupId: string, actorId: string, tournamentId: string, legs: 1 | 2 = 1) {
     await this.prisma.$transaction(async (tx) => {
-      await this.tournaments.lockTournament(tx, groupId, tournamentId);
+      assertHolder(await this.tournaments.lockTournament(tx, groupId, tournamentId), actorId);
       const tournament = await tx.tournament.findUniqueOrThrow({
         where: { id: tournamentId },
         select: { format: true, status: true },
@@ -138,6 +143,11 @@ export class MatchesService {
           drawnAt: new Date(),
         },
       });
+      await this.events.record(tx, tournamentId, actorId, 'DRAW_DONE', {
+        seed,
+        players: ids.length,
+        legs: isLeague ? legs : null,
+      });
     });
     return this.get(groupId, tournamentId);
   }
@@ -148,9 +158,15 @@ export class MatchesService {
   }
 
   /** Saisit ou corrige un score, ou un forfait (le vainqueur reçoit le score par défaut du tournoi). */
-  async setResult(groupId: string, tournamentId: string, code: string, input: ResultInput) {
+  async setResult(
+    groupId: string,
+    actorId: string,
+    tournamentId: string,
+    code: string,
+    input: ResultInput,
+  ) {
     await this.prisma.$transaction(async (tx) => {
-      await this.tournaments.lockTournament(tx, groupId, tournamentId);
+      assertHolder(await this.tournaments.lockTournament(tx, groupId, tournamentId), actorId);
       const t = await this.drawnTournament(tx, tournamentId);
       const matchIds = this.matchCodes(t);
       if (!matchIds.has(code)) throw new NotFoundException(MATCH_NOT_FOUND);
@@ -180,10 +196,26 @@ export class MatchesService {
       }
 
       const forfeitBy = 'forfeit' in input ? (input.forfeit === 'a' ? Side.A : Side.B) : null;
+      // Version optimiste : un écran périmé (le score a changé depuis) ne peut pas l'écraser.
+      const existing = await tx.matchResult.findUnique({
+        where: { tournamentId_code: { tournamentId, code } },
+        select: { version: true },
+      });
+      if (input.version !== undefined && input.version !== (existing?.version ?? 0)) {
+        throw new ConflictException('Ce score a changé depuis : rechargez la page');
+      }
+      const version = (existing?.version ?? 0) + 1;
       await tx.matchResult.upsert({
         where: { tournamentId_code: { tournamentId, code } },
-        create: { tournamentId, code, scoreA: score.a, scoreB: score.b, forfeitBy },
-        update: { scoreA: score.a, scoreB: score.b, forfeitBy },
+        create: { tournamentId, code, scoreA: score.a, scoreB: score.b, forfeitBy, version },
+        update: { scoreA: score.a, scoreB: score.b, forfeitBy, version },
+      });
+      await this.events.record(tx, tournamentId, actorId, 'RESULT_SET', {
+        code,
+        a: score.a,
+        b: score.b,
+        forfeitBy,
+        version,
       });
       await this.syncStatus(tx, t, next);
     });
@@ -191,9 +223,9 @@ export class MatchesService {
   }
 
   /** Annule un score saisi par erreur, tant que le match suivant n'a pas de résultat. */
-  async deleteResult(groupId: string, tournamentId: string, code: string) {
+  async deleteResult(groupId: string, actorId: string, tournamentId: string, code: string) {
     await this.prisma.$transaction(async (tx) => {
-      await this.tournaments.lockTournament(tx, groupId, tournamentId);
+      assertHolder(await this.tournaments.lockTournament(tx, groupId, tournamentId), actorId);
       const t = await this.drawnTournament(tx, tournamentId);
       if (!this.matchCodes(t).has(code)) throw new NotFoundException(MATCH_NOT_FOUND);
       const current = await this.scores(tx, tournamentId);
@@ -206,6 +238,7 @@ export class MatchesService {
         this.assertNextNotPlayed(bracket, code, current);
       }
       await tx.matchResult.delete({ where: { tournamentId_code: { tournamentId, code } } });
+      await this.events.record(tx, tournamentId, actorId, 'RESULT_DELETED', { code });
       await this.syncStatus(tx, t, rest);
     });
     return this.get(groupId, tournamentId);
@@ -216,9 +249,15 @@ export class MatchesService {
    * que le joueur remplacé n'a joué aucun match. La graine et la liste d'origine ne changent pas :
    * le tirage reste vérifiable, et le remplacement est visible (le joueur remplacé reste listé).
    */
-  async replacePlayer(groupId: string, tournamentId: string, outId: string, inId: string) {
+  async replacePlayer(
+    groupId: string,
+    actorId: string,
+    tournamentId: string,
+    outId: string,
+    inId: string,
+  ) {
     await this.prisma.$transaction(async (tx) => {
-      await this.tournaments.lockTournament(tx, groupId, tournamentId);
+      assertHolder(await this.tournaments.lockTournament(tx, groupId, tournamentId), actorId);
       const t = await this.drawnTournament(tx, tournamentId);
       if (t.status !== TournamentStatus.STARTED) {
         throw new ConflictException('Le tournoi est terminé : plus de remplacement possible');
@@ -257,6 +296,7 @@ export class MatchesService {
         where: { id: inId },
         data: { status: RegistrationStatus.ACCEPTED, presence: Presence.PRESENT },
       });
+      await this.events.record(tx, tournamentId, actorId, 'PLAYER_REPLACED', { outId, inId });
     });
     return this.get(groupId, tournamentId);
   }
@@ -383,6 +423,8 @@ export class MatchesService {
       initialPlayers: t.drawPlayers,
       forfeitScore: t.forfeitScore,
       players,
+      /** Version de chaque score : à renvoyer en le corrigeant (voir setResult). */
+      versions: Object.fromEntries(rows.map((r) => [r.code, r.version])),
       forfeits: Object.fromEntries(
         rows.filter((r) => r.forfeitBy).map((r) => [r.code, r.forfeitBy]),
       ),

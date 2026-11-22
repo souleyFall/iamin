@@ -44,6 +44,15 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | Données      | Identifiant, pseudo Plato, date de la demande, état du ticket               |
 | Conservation | 30 jours après clôture du ticket                                            |
 
+## Traitement 4 : journal des événements d'un tournoi
+
+|              |                                                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Finalité     | Retracer qui a modifié un tirage, un score ou le relais (contestation, bonne foi)                                                  |
+| Données      | Compte admin auteur, type d'action, date, identifiants et scores : aucun pseudo                                                    |
+| Conservation | Avec le tournoi ; l'auteur devient « inconnu » si son compte est supprimé                                                          |
+| Minimisation | Les actions d'un joueur sans compte n'ont pas d'auteur et ne contiennent que son identifiant d'inscription, supprimé avec sa ligne |
+
 ## Hors dépôt
 
 Les journaux d'accès du serveur web peuvent contenir des adresses IP : durée de conservation à fixer lors du déploiement (PR n°14).
