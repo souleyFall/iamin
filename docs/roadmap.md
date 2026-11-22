@@ -15,8 +15,8 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 7   | `feat(groups)` : groupes, rôles, garde d'appartenance, tests d'accès croisé       | fusionnée |
 | 8   | `feat(tournaments)` : création, inscriptions, liste d'attente, pointage           | fusionnée |
 | 9   | `feat(matches)` : tirage, scores, forfaits, remplacements                         | fusionnée |
-| 10  | `feat(relay)` : relais entre admins, journal d'événements                         | en cours  |
-| 11  | `feat(live)` : page publique et SSE                                               | prévue    |
+| 10  | `feat(relay)` : relais entre admins, journal d'événements                         | fusionnée |
+| 11  | `feat(live)` : page publique et SSE                                               | en cours  |
 | 12  | `feat(web)` : interface admin (jetons de design, écrans de la maquette)           | prévue    |
 | 13  | `feat(web)` : interface publique, PWA installable                                 | prévue    |
 | 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes        | prévue    |

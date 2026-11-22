@@ -73,6 +73,13 @@ function engineConflict<T>(run: () => T): T {
   }
 }
 
+function omitVersions<T extends { versions: unknown }>(view: T): Omit<T, 'versions'> {
+  return Object.fromEntries(Object.entries(view).filter(([key]) => key !== 'versions')) as Omit<
+    T,
+    'versions'
+  >;
+}
+
 /** Remplace un identifiant partout dans la structure JSON (les codes de match ne sont pas des uuid). */
 function replaceId(value: unknown, from: string, to: string): unknown {
   if (value === from) return to;
@@ -394,6 +401,39 @@ export class MatchesService {
 
   private leagueView(t: Drawn, results: Record<string, Score>) {
     return engineConflict(() => computeStandings(t.structure as League, results));
+  }
+
+  /**
+   * Vue publique en lecture seule, trouvée par le lien du tournoi. Elle ne montre ni les inscriptions
+   * en attente, ni les versions de score, ni qui tient la main : seulement ce qu'un spectateur voit.
+   * Le nombre d'événements du journal (`revision`) est lu AVANT la vue : la vue est au moins aussi
+   * récente que lui, ce qui permet au client de savoir s'il a raté un changement.
+   */
+  async publicView(slug: string) {
+    const t = await this.prisma.tournament.findUnique({
+      where: { publicSlug: slug },
+      select: { id: true, groupId: true, name: true, format: true, status: true, structure: true },
+    });
+    if (!t) throw new NotFoundException('Tournoi introuvable');
+    const revision = await this.prisma.tournamentEvent.count({ where: { tournamentId: t.id } });
+    const head = {
+      name: t.name,
+      format: t.format,
+      status: t.status,
+      registrationOpen: t.status === TournamentStatus.REGISTRATION,
+      revision,
+    };
+    if (!t.structure) {
+      const players = await this.prisma.registration.findMany({
+        where: { tournamentId: t.id, status: { not: RegistrationStatus.PENDING } },
+        select: { id: true, platoName: true, status: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      return { ...head, drawn: false as const, players };
+    }
+    const view = await this.buildView(this.prisma, t.groupId, t.id);
+    // Les versions servent aux admins (anti-écrasement) : un spectateur n'en a pas besoin.
+    return { ...head, ...omitVersions(view), drawn: true as const };
   }
 
   private async buildView(db: Tx, groupId: string, tournamentId: string) {

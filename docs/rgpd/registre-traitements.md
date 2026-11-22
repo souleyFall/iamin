@@ -23,18 +23,18 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 
 ## Traitement 2 : inscriptions des joueurs
 
-|                      |                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------- |
-| Finalité             | Gérer l'inscription, le pointage, la liste d'attente et les résultats d'un tournoi      |
-| Base légale          | Intérêt légitime ; le joueur s'inscrit de lui-même via le lien                          |
-| Données              | Pseudo Plato, statut d'inscription, présence, résultats des matchs, date d'inscription  |
-| Personnes concernées | Joueurs (sans compte)                                                                   |
-| Destinataires        | Les admins du groupe ; le pseudo et les résultats sont visibles sur la page publique    |
-| Conservation         | Proposition : 12 mois après la fin du tournoi, puis suppression ou anonymisation        |
-| Minimisation         | Aucun e-mail, aucun nom réel, aucune adresse IP stockée dans la base                    |
-| Droits               | Le joueur annule via son lien personnel ; effacement sur demande à l'admin du groupe    |
-| Suppression          | Annuler ou retirer un joueur supprime sa ligne (aucune trace conservée)                 |
-| Lien personnel       | Seule l'empreinte SHA-256 du jeton est stockée ; le jeton voyage en en-tête, pas en URL |
+|                      |                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Finalité             | Gérer l'inscription, le pointage, la liste d'attente et les résultats d'un tournoi                                                  |
+| Base légale          | Intérêt légitime ; le joueur s'inscrit de lui-même via le lien                                                                      |
+| Données              | Pseudo Plato, statut d'inscription, présence, résultats des matchs, date d'inscription                                              |
+| Personnes concernées | Joueurs (sans compte)                                                                                                               |
+| Destinataires        | Les admins du groupe ; le pseudo et les résultats sont visibles sur la page publique, mais seulement une fois l'inscription validée |
+| Conservation         | Proposition : 12 mois après la fin du tournoi, puis suppression ou anonymisation                                                    |
+| Minimisation         | Aucun e-mail, aucun nom réel, aucune adresse IP stockée dans la base                                                                |
+| Droits               | Le joueur annule via son lien personnel ; effacement sur demande à l'admin du groupe                                                |
+| Suppression          | Annuler ou retirer un joueur supprime sa ligne (aucune trace conservée)                                                             |
+| Lien personnel       | Seule l'empreinte SHA-256 du jeton est stockée ; le jeton voyage en en-tête, pas en URL                                             |
 
 ## Traitement 3 : tickets de réinitialisation de mot de passe
 
