@@ -58,6 +58,70 @@ model Group {
 
   members     GroupMember[]
   invitations Invitation[]
+  tournaments Tournament[]
+}
+
+enum TournamentFormat {
+  ELIMINATION // élimination directe
+  LEAGUE // tournoi à la ronde
+}
+
+enum TournamentStatus {
+  REGISTRATION // inscriptions ouvertes
+  CHECK_IN // pointage : inscriptions closes, les admins notent présents et absents
+}
+
+enum RegistrationStatus {
+  PENDING // inscrit via le lien public, en attente de validation par un admin
+  ACCEPTED // validé et dans la limite de places
+  WAITLIST // validé, mais tournoi complet : passe en ACCEPTED dès qu'une place se libère
+}
+
+enum Presence {
+  UNKNOWN
+  PRESENT
+  ABSENT
+}
+
+/// Un tournoi appartient à un seul groupe : toute lecture ou écriture est filtrée par groupId.
+model Tournament {
+  id         String           @id @default(uuid()) @db.Uuid
+  groupId    String           @db.Uuid
+  group      Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name       String
+  format     TournamentFormat
+  /// Nombre de places ; les validés au-delà vont en liste d'attente.
+  capacity   Int
+  status     TournamentStatus @default(REGISTRATION)
+  /// Identifiant du lien public d'inscription (aléatoire, 128 bits). Il ne donne que le droit de
+  /// s'inscrire et de voir le nom du tournoi.
+  publicSlug String           @unique
+  createdAt  DateTime         @default(now())
+
+  registrations Registration[]
+
+  @@index([groupId])
+}
+
+/// Inscription d'un joueur (sans compte). Retirer un joueur supprime la ligne : minimisation.
+model Registration {
+  id           String             @id @default(uuid()) @db.Uuid
+  tournamentId String             @db.Uuid
+  tournament   Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  /// Pseudo Plato tel que saisi (affiché, copié dans le chat).
+  platoName    String
+  /// Même pseudo en minuscules : un pseudo ne s'inscrit qu'une fois par tournoi.
+  platoKey     String
+  status       RegistrationStatus
+  presence     Presence           @default(UNKNOWN)
+  /// SHA-256 du lien personnel du joueur (suivi et annulation). Absent si un admin l'a inscrit.
+  tokenHash    String?            @unique
+  createdAt    DateTime           @default(now())
+  /// Date de validation : fixe l'ordre de la liste d'attente.
+  validatedAt  DateTime?
+
+  @@unique([tournamentId, platoKey])
+  @@index([tournamentId, status])
 }
 
 /// Appartenance d'un compte à un groupe. C'est la seule source des droits sur les données d'un

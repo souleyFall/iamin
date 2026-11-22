@@ -84,3 +84,12 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Personne ne s'attribue un rôle supérieur** : un super admin n'invite que des admins ; seul le propriétaire invite un super admin. Une invitation vise un groupe et un rôle précis, et ne sert qu'une fois.
 - **Un compte existant rejoint un autre groupe** avec `POST /invitations/join` (session ouverte), sans créer de second compte.
 - **Règle pour les PR suivantes** : toute route qui touche aux données d'un groupe (tournois, inscriptions, matchs…) passe par `GroupGuard` et s'accompagne d'un test d'accès croisé.
+
+## D15. Tournois et inscriptions
+
+- **Un tournoi appartient à un groupe.** Les routes d'administration sont `/groups/:groupId/tournaments/…` ; `@GroupAccess` est posé sur la classe du contrôleur (une route ajoutée plus tard est protégée par défaut) et `allowOwner` reste faux. Chaque requête de service filtre par `groupId` ET par identifiant de tournoi : l'identifiant d'un tournoi ou d'une inscription d'un autre groupe est introuvable, même via son propre groupe.
+- **Inscription publique, validation manuelle (D9).** Le lien public du tournoi (identifiant aléatoire de 128 bits) ne donne que le droit de s'inscrire. Le joueur est « en attente » ; un admin le valide, ce qui le place « accepté » s'il reste de la place, sinon en « liste d'attente ». Au plus 200 inscriptions en attente par tournoi, et 10 inscriptions par minute et par adresse IP (R8).
+- **Lien personnel du joueur** : jeton de 256 bits, montré une seule fois, seule son empreinte est stockée. Il est envoyé dans l'en-tête `x-player-token`, jamais dans l'URL, donc absent des journaux d'accès. Il permet de voir son statut (jamais les autres inscrits) et d'annuler.
+- **Retirer ou annuler supprime la ligne** (minimisation RGPD) ; la promotion du premier de la liste d'attente est automatique, dans l'ordre de validation. Un pseudo ne s'inscrit qu'une fois par tournoi, sans tenir compte de la casse.
+- **Concurrence** : toute écriture qui touche aux places verrouille la ligne du tournoi (`SELECT … FOR UPDATE`) dans la transaction, comme D5 le prévoit pour les matchs : deux validations simultanées ne dépassent jamais la capacité. Réduire les places sous le nombre d'acceptés est refusé (409) ; les augmenter promeut la liste d'attente.
+- **Pointage** (présent / absent) : seulement pendant la phase `CHECK_IN`, seulement pour les joueurs acceptés. Les phases suivantes (tirage, en cours, terminé) arrivent avec la PR n°9.

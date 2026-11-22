@@ -71,7 +71,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
 
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "GroupMember", "Group", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "Registration", "Tournament", "GroupMember", "Group", "User" RESTART IDENTITY CASCADE',
   );
 }
 
@@ -111,9 +111,9 @@ export class Client {
     method: string,
     path: string,
     body?: unknown,
-    options: { csrf?: boolean; origin?: string | null } = {},
+    options: { csrf?: boolean; origin?: string | null; headers?: Record<string, string> } = {},
   ): Promise<Reply> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...options.headers };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.cookie) headers.cookie = this.cookie;
     const origin = options.origin === undefined ? this.origin : (options.origin ?? undefined);

@@ -16,6 +16,11 @@ import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
 import { PrismaService } from './prisma.service';
+import {
+  PublicTournamentsController,
+  TournamentsController,
+} from './tournaments/tournaments.controller';
+import { TournamentsService } from './tournaments/tournaments.service';
 
 @Module({})
 export class AppModule {
@@ -37,6 +42,8 @@ export class AppModule {
         InvitationsController,
         TicketsController,
         GroupsController,
+        TournamentsController,
+        PublicTournamentsController,
       ],
       providers: [
         { provide: APP_CONFIG, useValue: config },
@@ -46,6 +53,7 @@ export class AppModule {
         InvitationsService,
         ResetService,
         GroupsService,
+        TournamentsService,
         // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
         GroupGuard,
         // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.
