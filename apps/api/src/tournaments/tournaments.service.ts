@@ -1,5 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   type Prisma,
   Presence,
@@ -56,7 +62,11 @@ export class TournamentsService {
   // Administration (groupe vérifié par GroupGuard)
   // ---------------------------------------------------------------------------------------------
 
-  create(groupId: string, input: { name: string; format: TournamentFormat; capacity: number }) {
+  create(
+    groupId: string,
+    input: { name: string; format: TournamentFormat; capacity: number; forfeitScore?: number },
+  ) {
+    assertLeagueSize(input.format, input.capacity);
     return this.prisma.tournament.create({
       data: { ...input, groupId, publicSlug: randomBytes(16).toString('base64url') },
       select: tournamentSelect,
@@ -93,11 +103,25 @@ export class TournamentsService {
   async update(
     groupId: string,
     tournamentId: string,
-    input: { name?: string; capacity?: number; status?: TournamentStatus },
+    input: {
+      name?: string;
+      capacity?: number;
+      forfeitScore?: number;
+      status?: typeof TournamentStatus.REGISTRATION | typeof TournamentStatus.CHECK_IN;
+    },
   ) {
     await this.prisma.$transaction(async (tx) => {
-      await this.lockTournament(tx, groupId, tournamentId);
+      const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      const drawn = !isOpen(tournament.status);
+      if (drawn && (input.status !== undefined || input.capacity !== undefined)) {
+        throw new ConflictException('Le tirage est fait : les places et la phase sont figées');
+      }
       if (input.capacity !== undefined) {
+        const { format } = await tx.tournament.findUniqueOrThrow({
+          where: { id: tournamentId },
+          select: { format: true },
+        });
+        assertLeagueSize(format, input.capacity);
         const accepted = await tx.registration.count({
           where: { tournamentId, status: RegistrationStatus.ACCEPTED },
         });
@@ -118,6 +142,7 @@ export class TournamentsService {
     return this.prisma
       .$transaction(async (tx) => {
         const tournament = await this.lockTournament(tx, groupId, tournamentId);
+        assertOpen(tournament.status);
         const status = await this.statusForValidated(tx, tournament);
         return tx.registration.create({
           data: {
@@ -137,6 +162,7 @@ export class TournamentsService {
   async accept(groupId: string, tournamentId: string, registrationId: string) {
     return this.prisma.$transaction(async (tx) => {
       const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertOpen(tournament.status);
       const registration = await tx.registration.findFirst({
         where: { id: registrationId, tournamentId },
         select: { status: true },
@@ -185,7 +211,8 @@ export class TournamentsService {
   /** Retire un joueur (la ligne est supprimée) ; le premier de la liste d'attente prend sa place. */
   async removePlayer(groupId: string, tournamentId: string, registrationId: string) {
     await this.prisma.$transaction(async (tx) => {
-      await this.lockTournament(tx, groupId, tournamentId);
+      const tournament = await this.lockTournament(tx, groupId, tournamentId);
+      assertOpen(tournament.status, 'Utilisez le remplacement pour changer un joueur');
       const { count } = await tx.registration.deleteMany({
         where: { id: registrationId, tournamentId },
       });
@@ -286,7 +313,8 @@ export class TournamentsService {
         select: { id: true, tournamentId: true },
       });
       if (!row) throw new NotFoundException(REGISTRATION_NOT_FOUND);
-      await this.lockTournamentById(tx, row.tournamentId);
+      const tournament = await this.lockTournamentById(tx, row.tournamentId);
+      assertOpen(tournament.status, 'Le tirage est fait : prévenez un admin pour vous retirer');
       await tx.registration.deleteMany({ where: { id: row.id } });
       await this.promoteFromWaitlist(tx, row.tournamentId);
     });
@@ -297,7 +325,7 @@ export class TournamentsService {
   // ---------------------------------------------------------------------------------------------
 
   /** Verrouille le tournoi DU GROUPE (404 sinon) : sérialise les écritures qui touchent aux places. */
-  private async lockTournament(tx: Tx, groupId: string, tournamentId: string) {
+  async lockTournament(tx: Tx, groupId: string, tournamentId: string) {
     const rows = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Tournament" WHERE id = ${tournamentId}::uuid AND "groupId" = ${groupId}::uuid FOR UPDATE`;
     if (rows.length === 0) throw new NotFoundException(TOURNAMENT_NOT_FOUND);
@@ -357,8 +385,31 @@ const tournamentSelect = {
   capacity: true,
   status: true,
   publicSlug: true,
+  forfeitScore: true,
   createdAt: true,
+  drawnAt: true,
+  drawSeed: true,
 } as const;
+
+/** Une ligue de N joueurs a N×(N-1)/2 matchs : on borne pour garder un calendrier lisible. */
+export const MAX_LEAGUE_PLAYERS = 32;
+
+function assertLeagueSize(format: TournamentFormat, capacity: number): void {
+  if (format === 'LEAGUE' && capacity > MAX_LEAGUE_PLAYERS) {
+    throw new BadRequestException(`Une ligue accepte ${MAX_LEAGUE_PLAYERS} joueurs au plus`);
+  }
+}
+
+/** Avant le tirage : inscriptions et pointage sont modifiables. Après : tout est figé. */
+export const isOpen = (status: TournamentStatus): boolean =>
+  status === TournamentStatus.REGISTRATION || status === TournamentStatus.CHECK_IN;
+
+function assertOpen(
+  status: TournamentStatus,
+  message = 'Le tirage est fait : la liste des joueurs est figée',
+): void {
+  if (!isOpen(status)) throw new ConflictException(message);
+}
 
 function countByStatus(statuses: RegistrationStatus[]) {
   return {

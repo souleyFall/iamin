@@ -69,12 +69,20 @@ enum TournamentFormat {
 enum TournamentStatus {
   REGISTRATION // inscriptions ouvertes
   CHECK_IN // pointage : inscriptions closes, les admins notent présents et absents
+  STARTED // tirage fait : les inscriptions et le pointage sont figés, on saisit les scores
+  FINISHED // champion connu (élimination) ou tous les matchs joués (ligue)
 }
 
 enum RegistrationStatus {
   PENDING // inscrit via le lien public, en attente de validation par un admin
   ACCEPTED // validé et dans la limite de places
   WAITLIST // validé, mais tournoi complet : passe en ACCEPTED dès qu'une place se libère
+  REPLACED // remplacé après le tirage : la ligne reste pour l'historique des matchs
+}
+
+enum Side {
+  A
+  B
 }
 
 enum Presence {
@@ -85,20 +93,33 @@ enum Presence {
 
 /// Un tournoi appartient à un seul groupe : toute lecture ou écriture est filtrée par groupId.
 model Tournament {
-  id         String           @id @default(uuid()) @db.Uuid
-  groupId    String           @db.Uuid
-  group      Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name       String
-  format     TournamentFormat
+  id           String           @id @default(uuid()) @db.Uuid
+  groupId      String           @db.Uuid
+  group        Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name         String
+  format       TournamentFormat
   /// Nombre de places ; les validés au-delà vont en liste d'attente.
-  capacity   Int
-  status     TournamentStatus @default(REGISTRATION)
+  capacity     Int
+  status       TournamentStatus @default(REGISTRATION)
   /// Identifiant du lien public d'inscription (aléatoire, 128 bits). Il ne donne que le droit de
   /// s'inscrire et de voir le nom du tournoi.
-  publicSlug String           @unique
-  createdAt  DateTime         @default(now())
+  publicSlug   String           @unique
+  createdAt    DateTime         @default(now())
+  /// Points du vainqueur quand l'adversaire déclare forfait (le forfait perd 0).
+  forfeitScore Int              @default(1)
+
+  /// Tirage (vide avant le tirage). La graine est aléatoire, choisie par le serveur et publiée :
+  /// avec `drawPlayers` (identifiants triés) n'importe qui peut refaire le tirage et comparer.
+  drawSeed    String?
+  drawPlayers String[]
+  /// Nombre d'aller-retours d'une ligue (1 ou 2) ; vide pour une élimination directe.
+  drawLegs    Int?
+  /// Tableau ou calendrier calculé par le moteur, avec les remplacements appliqués depuis.
+  structure   Json?
+  drawnAt     DateTime?
 
   registrations Registration[]
+  results       MatchResult[]
 
   @@index([groupId])
 }
@@ -189,4 +210,19 @@ model ResetTicket {
 
   @@index([userId])
   @@index([status])
+}
+
+/// Score d'un match (code du moteur : `R2M1`). Les joueurs viennent de `Tournament.structure`.
+model MatchResult {
+  id           String     @id @default(uuid()) @db.Uuid
+  tournamentId String     @db.Uuid
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  code         String
+  scoreA       Int
+  scoreB       Int
+  /// Camp qui a déclaré forfait (le score est alors celui des réglages du tournoi).
+  forfeitBy    Side?
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([tournamentId, code])
 }
