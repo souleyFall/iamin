@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { GroupRole } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '../auth/auth.controller';
 import { parseBody } from '../auth/schemas';
 import { GroupAccess, GroupGuard, type GroupRequest } from '../groups/group.guard';
 import { MatchesService } from './matches.service';
@@ -21,11 +22,15 @@ const idSchema = z.string().uuid();
 const codeSchema = z.string().regex(/^R\d{1,3}M\d{1,3}$/, 'Code de match invalide');
 const drawSchema = z.object({ legs: z.union([z.literal(1), z.literal(2)]).optional() });
 const score = z.number().int().min(0).max(99);
+// version (facultative) : celle du score affiché ; un écran périmé reçoit 409 au lieu d'écraser.
+const version = z.number().int().min(0);
 const resultSchema = z.union([
-  z.object({ a: score, b: score }).strict(),
-  z.object({ forfeit: z.enum(['a', 'b']) }).strict(),
+  z.object({ a: score, b: score, version: version.optional() }).strict(),
+  z.object({ forfeit: z.enum(['a', 'b']), version: version.optional() }).strict(),
 ]);
 const replaceSchema = z.object({ outId: idSchema, inId: idSchema });
+
+const actorOf = (req: GroupRequest): string => requireAuth(req).user.id;
 
 function groupIdOf(req: GroupRequest): string {
   if (!req.group) throw new Error('Contexte de groupe absent : @GroupAccess manquant');
@@ -43,7 +48,7 @@ export class MatchesController {
   @Post('draw')
   draw(@Req() req: GroupRequest, @Param('tournamentId') id: string, @Body() body: unknown) {
     const { legs } = parseBody(drawSchema, body ?? {});
-    return this.matches.draw(groupIdOf(req), parseBody(idSchema, id), legs);
+    return this.matches.draw(groupIdOf(req), actorOf(req), parseBody(idSchema, id), legs);
   }
 
   /** Tableau ou calendrier, scores, classement. */
@@ -61,6 +66,7 @@ export class MatchesController {
   ) {
     return this.matches.setResult(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(codeSchema, code),
       parseBody(resultSchema, body),
@@ -75,6 +81,7 @@ export class MatchesController {
   ) {
     return this.matches.deleteResult(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(codeSchema, code),
     );
@@ -84,6 +91,12 @@ export class MatchesController {
   @Post('replacements')
   replace(@Req() req: GroupRequest, @Param('tournamentId') id: string, @Body() body: unknown) {
     const { outId, inId } = parseBody(replaceSchema, body);
-    return this.matches.replacePlayer(groupIdOf(req), parseBody(idSchema, id), outId, inId);
+    return this.matches.replacePlayer(
+      groupIdOf(req),
+      actorOf(req),
+      parseBody(idSchema, id),
+      outId,
+      inId,
+    );
   }
 }

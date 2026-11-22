@@ -47,8 +47,11 @@ model User {
   sessions           Session[]
   resetTickets       ResetTicket[]
   memberships        GroupMember[]
-  invitationsCreated Invitation[]  @relation("InvitationCreator")
-  invitationsUsed    Invitation[]  @relation("InvitationUser")
+  invitationsCreated Invitation[]      @relation("InvitationCreator")
+  invitationsUsed    Invitation[]      @relation("InvitationUser")
+  tournamentsHeld    Tournament[]      @relation("TournamentHolder")
+  handoversOffered   Tournament[]      @relation("TournamentHandover")
+  events             TournamentEvent[]
 }
 
 model Group {
@@ -118,8 +121,17 @@ model Tournament {
   structure   Json?
   drawnAt     DateTime?
 
+  /// Celui qui « tient la main » : lui seul écrit (D5). `null` : personne, n'importe quel admin du
+  /// groupe peut la prendre. Si le détenteur quitte le groupe ou est supprimé, elle se libère.
+  holderId     String? @db.Uuid
+  holder       User?   @relation("TournamentHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  /// Admin à qui le détenteur propose de passer le relais ; il doit l'accepter.
+  handoverToId String? @db.Uuid
+  handoverTo   User?   @relation("TournamentHandover", fields: [handoverToId], references: [id], onDelete: SetNull)
+
   registrations Registration[]
   results       MatchResult[]
+  events        TournamentEvent[]
 
   @@index([groupId])
 }
@@ -222,7 +234,26 @@ model MatchResult {
   scoreB       Int
   /// Camp qui a déclaré forfait (le score est alors celui des réglages du tournoi).
   forfeitBy    Side?
+  /// Passe de 1 en 1 à chaque modification : un écran périmé ne peut pas écraser un score plus récent.
+  version      Int        @default(1)
   updatedAt    DateTime   @updatedAt
 
   @@unique([tournamentId, code])
+}
+
+/// Journal : qui a fait quoi, quand (R14). Ajouté dans la même transaction que le changement.
+/// La charge ne contient que des identifiants, des codes de match et des scores : jamais un pseudo
+/// ni une donnée sensible, pour qu'effacer un joueur n'en laisse aucune trace ici.
+model TournamentEvent {
+  id           String     @id @default(uuid()) @db.Uuid
+  tournamentId String     @db.Uuid
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  /// `null` pour une action d'un joueur sans compte, ou si le compte a été supprimé depuis.
+  actorId      String?    @db.Uuid
+  actor        User?      @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  type         String
+  payload      Json
+  createdAt    DateTime   @default(now())
+
+  @@index([tournamentId, createdAt])
 }

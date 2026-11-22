@@ -353,12 +353,12 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
     it('deux scores saisis en même temps sont tous les deux enregistrés', async () => {
       const { a } = await world();
       const alice = await loggedIn('alice');
-      const adam = await loggedIn('adam');
+      const second = await loggedIn('alice'); // deuxième onglet du même admin
       const r = await ready(alice, a.id, { names: ['P1', 'P2', 'P3', 'P4'] });
       await draw(alice, r.base);
       const replies = await Promise.all([
         score(alice, r.base, 'R1M1', { a: 2, b: 0 }),
-        score(adam, r.base, 'R1M2', { a: 0, b: 2 }),
+        score(second, r.base, 'R1M2', { a: 0, b: 2 }),
       ]);
       expect(replies.map((x) => x.status)).toEqual([200, 200]);
       expect(await t.prisma.matchResult.count()).toBe(2);

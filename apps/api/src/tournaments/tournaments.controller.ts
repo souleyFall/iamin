@@ -15,6 +15,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { GroupRole, Presence, TournamentFormat, TournamentStatus } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '../auth/auth.controller';
 import { Public } from '../auth/guards';
 import { parseBody, platoUsernameSchema, tokenSchema } from '../auth/schemas';
 import { GroupAccess, GroupGuard, type GroupRequest } from '../groups/group.guard';
@@ -57,6 +58,10 @@ function groupIdOf(req: GroupRequest): string {
   return req.group.groupId;
 }
 
+function actorOf(req: GroupRequest): string {
+  return requireAuth(req).user.id;
+}
+
 /**
  * Tournois d'un groupe. `@GroupAccess` est posé sur la classe : une route ajoutée plus tard est
  * protégée par défaut. `allowOwner` reste faux : le propriétaire de la plateforme ne lit pas les
@@ -70,7 +75,7 @@ export class TournamentsController {
 
   @Post()
   create(@Req() req: GroupRequest, @Body() body: unknown) {
-    return this.tournaments.create(groupIdOf(req), parseBody(createSchema, body));
+    return this.tournaments.create(groupIdOf(req), actorOf(req), parseBody(createSchema, body));
   }
 
   @Get()
@@ -87,6 +92,7 @@ export class TournamentsController {
   update(@Req() req: GroupRequest, @Param('tournamentId') id: string, @Body() body: unknown) {
     return this.tournaments.update(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(updateSchema, body),
     );
@@ -95,7 +101,7 @@ export class TournamentsController {
   @Post(':tournamentId/registrations')
   addPlayer(@Req() req: GroupRequest, @Param('tournamentId') id: string, @Body() body: unknown) {
     const { name } = parseBody(playerSchema, body);
-    return this.tournaments.addPlayer(groupIdOf(req), parseBody(idSchema, id), name);
+    return this.tournaments.addPlayer(groupIdOf(req), actorOf(req), parseBody(idSchema, id), name);
   }
 
   @HttpCode(200)
@@ -107,6 +113,7 @@ export class TournamentsController {
   ) {
     return this.tournaments.accept(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(idSchema, registrationId),
     );
@@ -121,6 +128,7 @@ export class TournamentsController {
   ) {
     return this.tournaments.setPresence(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(idSchema, registrationId),
       parseBody(presenceSchema, body).presence,
@@ -136,6 +144,7 @@ export class TournamentsController {
   ) {
     await this.tournaments.removePlayer(
       groupIdOf(req),
+      actorOf(req),
       parseBody(idSchema, id),
       parseBody(idSchema, registrationId),
     );
