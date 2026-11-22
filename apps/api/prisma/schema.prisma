@@ -13,10 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Rôle sur la plateforme. Le rôle dans un groupe est porté par GroupMember : un compte peut
+/// appartenir à plusieurs groupes, avec un rôle différent dans chacun.
 enum Role {
   PLATFORM_OWNER // le propriétaire de la plateforme
-  GROUP_SUPER_ADMIN // créateur d'un groupe : invite ses admins, peut reprendre le relais
-  ADMIN // admin d'un groupe
+  MEMBER // tout autre compte : ses droits viennent de ses appartenances à des groupes
+}
+
+enum GroupRole {
+  SUPER_ADMIN // créateur du groupe : invite ses admins, peut reprendre le relais
+  ADMIN // admin du groupe
 }
 
 enum ResetTicketStatus {
@@ -40,8 +46,33 @@ model User {
 
   sessions           Session[]
   resetTickets       ResetTicket[]
+  memberships        GroupMember[]
   invitationsCreated Invitation[]  @relation("InvitationCreator")
-  invitationUsed     Invitation?   @relation("InvitationUser")
+  invitationsUsed    Invitation[]  @relation("InvitationUser")
+}
+
+model Group {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+
+  members     GroupMember[]
+  invitations Invitation[]
+}
+
+/// Appartenance d'un compte à un groupe. C'est la seule source des droits sur les données d'un
+/// groupe : toute route qui lit ou écrit des données d'un groupe passe par elle (GroupGuard).
+model GroupMember {
+  id        String    @id @default(uuid()) @db.Uuid
+  groupId   String    @db.Uuid
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      GroupRole
+  createdAt DateTime  @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }
 
 model Session {
@@ -64,17 +95,20 @@ model Invitation {
   id          String    @id @default(uuid()) @db.Uuid
   /// SHA-256 du jeton du lien d'invitation. Le jeton lui-même n'est montré qu'une fois.
   tokenHash   String    @unique
-  /// Rôle que recevra la personne invitée.
-  role        Role
+  /// Groupe que la personne invitée rejoint, et rôle qu'elle y recevra.
+  groupId     String    @db.Uuid
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupRole   GroupRole
   createdById String    @db.Uuid
   createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   expiresAt   DateTime
   usedAt      DateTime?
-  usedById    String?   @unique @db.Uuid
+  usedById    String?   @db.Uuid
   usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id], onDelete: SetNull)
 
   @@index([createdById])
+  @@index([groupId])
 }
 
 model ResetTicket {

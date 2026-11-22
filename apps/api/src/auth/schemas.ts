@@ -22,6 +22,14 @@ export const platoUsernameSchema = z
   // Pas de caractère de contrôle : le pseudo est recopié dans des messages de chat.
   .refine((v) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(v), 'Caractères non autorisés');
 
+/** Nom d'un groupe : affiché dans les textes copiés dans le chat, donc sans caractère de contrôle. */
+export const groupNameSchema = z
+  .string()
+  .trim()
+  .min(2, '2 caractères au minimum')
+  .max(60, '60 caractères au maximum')
+  .refine((v) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(v), 'Caractères non autorisés');
+
 export const tokenSchema = z.string().min(20).max(200);
 
 /**

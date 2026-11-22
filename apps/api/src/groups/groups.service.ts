@@ -1,0 +1,138 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { GroupRole, Role } from '@prisma/client';
+import { InvitationsService, type CreatedInvitation } from '../auth/invitations.service';
+import type { AuthContext } from '../auth/session.service';
+import { PrismaService } from '../prisma.service';
+import type { GroupContext } from './group.guard';
+
+export interface GroupSummary {
+  id: string;
+  name: string;
+  createdAt: Date;
+  /** Rôle du compte dans ce groupe ; `null` pour le propriétaire de la plateforme (non membre). */
+  myRole: GroupRole | null;
+  memberCount: number;
+}
+
+@Injectable()
+export class GroupsService {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(InvitationsService) private readonly invitations: InvitationsService,
+  ) {}
+
+  /**
+   * Le propriétaire crée un groupe et l'invitation de son créateur (super admin).
+   * Les deux sont créés dans la même transaction : jamais de groupe sans personne pour le gérer.
+   */
+  async create(
+    ownerId: string,
+    name: string,
+  ): Promise<{ group: { id: string; name: string }; invitation: CreatedInvitation }> {
+    return this.prisma.$transaction(async (tx) => {
+      const group = await tx.group.create({ data: { name } });
+      const invitation = await this.invitations.create(
+        { groupId: group.id, groupRole: GroupRole.SUPER_ADMIN, createdById: ownerId },
+        tx,
+      );
+      return { group: { id: group.id, name: group.name }, invitation };
+    });
+  }
+
+  /**
+   * Groupes visibles par le compte : les siens ; le propriétaire de la plateforme les voit tous
+   * (assistance), sans en être membre.
+   */
+  async listFor(auth: AuthContext): Promise<GroupSummary[]> {
+    if (auth.user.role === Role.PLATFORM_OWNER) {
+      const groups = await this.prisma.group.findMany({
+        include: { _count: { select: { members: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      return groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        createdAt: g.createdAt,
+        myRole: null,
+        memberCount: g._count.members,
+      }));
+    }
+    const memberships = await this.prisma.groupMember.findMany({
+      where: { userId: auth.user.id },
+      include: { group: { include: { _count: { select: { members: true } } } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return memberships.map((m) => ({
+      id: m.group.id,
+      name: m.group.name,
+      createdAt: m.group.createdAt,
+      myRole: m.role,
+      memberCount: m.group._count.members,
+    }));
+  }
+
+  /** Détail d'un groupe : l'accès a déjà été vérifié par `GroupGuard`. */
+  async get(groupId: string, access: GroupContext) {
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        members: {
+          include: { user: { select: { id: true, username: true, platoUsername: true } } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+    if (!group) throw new NotFoundException('Groupe introuvable');
+    return {
+      id: group.id,
+      name: group.name,
+      createdAt: group.createdAt,
+      myRole: access.role,
+      members: group.members.map((m) => ({
+        userId: m.user.id,
+        username: m.user.username,
+        platoUsername: m.user.platoUsername,
+        role: m.role,
+      })),
+    };
+  }
+
+  /**
+   * Invite quelqu'un dans le groupe. Un super admin invite des admins ; seul le propriétaire de la
+   * plateforme invite un super admin (par exemple si le créateur a perdu son compte). Personne ne
+   * peut donc se donner, ni donner à un tiers, un rôle supérieur à celui qu'il a.
+   */
+  invite(
+    auth: AuthContext,
+    access: GroupContext,
+    groupRole: GroupRole,
+  ): Promise<CreatedInvitation> {
+    if (groupRole === GroupRole.SUPER_ADMIN && access.role !== null) {
+      throw new ForbiddenException('Seul le propriétaire de la plateforme invite un super admin');
+    }
+    return this.invitations.create({
+      groupId: access.groupId,
+      groupRole,
+      createdById: auth.user.id,
+    });
+  }
+
+  /** Retire un admin du groupe. Un super admin ne se retire pas ici : le groupe resterait sans chef. */
+  async removeMember(groupId: string, userId: string): Promise<void> {
+    const membership = await this.prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      select: { id: true, role: true },
+    });
+    if (!membership) throw new NotFoundException('Membre introuvable');
+    if (membership.role === GroupRole.SUPER_ADMIN) {
+      throw new ConflictException('Un super admin ne peut pas être retiré du groupe');
+    }
+    await this.prisma.groupMember.delete({ where: { id: membership.id } });
+  }
+}

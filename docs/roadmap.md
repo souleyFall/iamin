@@ -11,8 +11,8 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 3   | `feat(engine)` : ligue (tournoi à la ronde, classement, départages)               | fusionnée |
 | 4   | `feat(engine)` : générateurs de texte pour le chat                                | fusionnée |
 | 5   | `chore(api)` : API NestJS, PostgreSQL, Prisma, Docker Compose                     | fusionnée |
-| 6   | `feat(auth)` : sessions, argon2id, CSRF, invitations, tickets de réinitialisation | en cours  |
-| 7   | `feat(groups)` : groupes, rôles, garde d'appartenance, tests d'accès croisé       | prévue    |
+| 6   | `feat(auth)` : sessions, argon2id, CSRF, invitations, tickets de réinitialisation | fusionnée |
+| 7   | `feat(groups)` : groupes, rôles, garde d'appartenance, tests d'accès croisé       | en cours  |
 | 8   | `feat(tournaments)` : création, inscriptions, liste d'attente, pointage           | prévue    |
 | 9   | `feat(matches)` : tirage, scores, forfaits, remplacements                         | prévue    |
 | 10  | `feat(relay)` : relais entre admins, journal d'événements                         | prévue    |
