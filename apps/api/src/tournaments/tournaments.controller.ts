@@ -35,12 +35,15 @@ const createSchema = z.object({
   name: nameSchema,
   format: z.nativeEnum(TournamentFormat),
   capacity: capacitySchema,
+  forfeitScore: z.number().int().min(1).max(99).optional(),
 });
 const updateSchema = z
   .object({
     name: nameSchema.optional(),
     capacity: capacitySchema.optional(),
-    status: z.nativeEnum(TournamentStatus).optional(),
+    forfeitScore: z.number().int().min(1).max(99).optional(),
+    // Le tirage (PR 9) fait passer en STARTED puis FINISHED : on ne les fixe pas à la main.
+    status: z.enum([TournamentStatus.REGISTRATION, TournamentStatus.CHECK_IN]).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Aucune modification');
 const playerSchema = z.object({ name: platoUsernameSchema });

@@ -71,7 +71,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
 
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "Registration", "Tournament", "GroupMember", "Group", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Session", "Invitation", "ResetTicket", "MatchResult", "Registration", "Tournament", "GroupMember", "Group", "User" RESTART IDENTITY CASCADE',
   );
 }
 

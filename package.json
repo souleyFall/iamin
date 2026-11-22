@@ -7,7 +7,8 @@
   },
   "scripts": {
     "generate": "pnpm -r --if-present generate",
-    "postinstall": "pnpm generate",
+    "build:engine": "pnpm --filter @iamin/engine build",
+    "postinstall": "pnpm generate && pnpm build:engine",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -15,7 +16,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm build:engine && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
     "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
