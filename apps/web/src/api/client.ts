@@ -4,6 +4,9 @@
  * localStorage ni cookie lisible, donc rien à voler après coup. Au rechargement de la page,
  * `/auth/me` le renvoie tant que la session est valide.
  */
+import { activeLocale, translate } from '../lib/i18n';
+import type { MessageKey } from '../lib/i18n/messages';
+
 export const API_URL: string = (
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000'
 ).replace(/\/+$/, '');
@@ -27,19 +30,20 @@ export function setCsrfToken(token: string | undefined): void {
   csrfToken = token;
 }
 
-const FALLBACK: Record<number, string> = {
-  400: 'Données invalides.',
-  401: 'Connexion requise.',
-  403: 'Action non autorisée.',
-  404: 'Introuvable.',
-  409: 'Action impossible dans l’état actuel.',
-  429: 'Trop de tentatives, réessaie dans une minute.',
+const FALLBACK: Record<number, MessageKey> = {
+  400: 'err.400',
+  401: 'err.401',
+  403: 'err.403',
+  404: 'err.404',
+  409: 'err.409',
+  429: 'err.429',
 };
 
 /** Extrait un message lisible d'une réponse d'erreur de l'API. */
 export function describeError(status: number, body: unknown): ApiError {
   const fields: Record<string, string> = {};
-  let message = FALLBACK[status] ?? 'Le serveur a répondu par une erreur.';
+  const fallbackKey = FALLBACK[status] ?? 'err.server';
+  let message = translate(activeLocale(), fallbackKey);
   let code: string | undefined;
   if (typeof body === 'object' && body !== null) {
     const {
@@ -80,7 +84,7 @@ export async function api<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, 'Serveur injoignable. Vérifie ta connexion.');
+    throw new ApiError(0, translate(activeLocale(), 'err.network'));
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();

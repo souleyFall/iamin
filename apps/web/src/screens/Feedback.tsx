@@ -6,7 +6,8 @@ import type { FeedbackKind } from '../api/types';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
-import { FEEDBACK_KIND_LABEL } from '../lib/labels';
+import { useI18n } from '../lib/i18n';
+import { FEEDBACK_KIND_KEY } from '../lib/labels';
 
 const KINDS: FeedbackKind[] = ['IDEA', 'IMPROVEMENT', 'BUG', 'OTHER'];
 const MAX = 2000;
@@ -18,6 +19,7 @@ const MAX = 2000;
  */
 export function Feedback() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const signedIn = Boolean(user);
   const send = useSendFeedback(signedIn);
@@ -40,7 +42,7 @@ export function Feedback() {
     <button
       type="button"
       className="icon-btn flat"
-      aria-label="Retour"
+      aria-label={t('common.back')}
       onClick={() => void navigate(-1)}
     >
       <Icon name="back" size={24} />
@@ -52,10 +54,10 @@ export function Feedback() {
       <main className="login">
         <div className="logo">i-am-in</div>
         <section className="panel" role="status">
-          <h1 className="section-title">Merci !</h1>
-          <p>Ton retour est bien reçu. Il sera lu par le responsable d’i-am-in.</p>
+          <h1 className="section-title">{t('fb.thanks')}</h1>
+          <p>{t('fb.received')}</p>
           <button type="button" className="btn" onClick={() => void navigate(-1)}>
-            Retour
+            {t('common.back')}
           </button>
         </section>
       </main>
@@ -66,33 +68,29 @@ export function Feedback() {
     <main className="login">
       <header className="topbar" style={{ alignSelf: 'stretch' }}>
         {back}
-        <h1 className="title">Donner mon avis</h1>
+        <h1 className="title">{t('fb.title')}</h1>
       </header>
       <form className="panel" onSubmit={submit}>
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend>Type de retour</legend>
+          <legend>{t('fb.kind')}</legend>
           <div className="segmented" style={{ flexWrap: 'wrap' }}>
             {KINDS.map((k) => (
               <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
-                {FEEDBACK_KIND_LABEL[k]}
+                {t(FEEDBACK_KIND_KEY[k])}
               </button>
             ))}
           </div>
         </fieldset>
 
         <div className="field">
-          <label htmlFor="feedback-message">Ton message</label>
+          <label htmlFor="feedback-message">{t('fb.message')}</label>
           <textarea
             id="feedback-message"
             className="input"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             maxLength={MAX}
-            placeholder={
-              kind === 'BUG'
-                ? 'Ce que tu as fait, ce qui s’est passé, ce que tu attendais.'
-                : 'Décris ton idée ou ce qui pourrait être mieux.'
-            }
+            placeholder={kind === 'BUG' ? t('fb.placeholderBug') : t('fb.placeholderIdea')}
             required
           />
           <p className="hint">
@@ -103,7 +101,7 @@ export function Feedback() {
 
         {!signedIn && (
           <div className="field">
-            <label htmlFor="feedback-contact">Ton pseudo Plato (facultatif)</label>
+            <label htmlFor="feedback-contact">{t('fb.contact')}</label>
             <input
               id="feedback-contact"
               className="input"
@@ -113,7 +111,7 @@ export function Feedback() {
               spellCheck={false}
               maxLength={64}
             />
-            <p className="hint">Seulement si tu veux qu’on puisse te répondre.</p>
+            <p className="hint">{t('fb.contactHint')}</p>
             {fieldError.contact && <p className="error">{fieldError.contact}</p>}
           </div>
         )}
@@ -124,14 +122,11 @@ export function Feedback() {
           type="submit"
           disabled={send.isPending || message.trim().length < 5}
         >
-          Envoyer
+          {t('fb.send')}
         </button>
         <p className="hint">
-          {signedIn
-            ? 'Ton identifiant est joint à ton message.'
-            : 'Sans compte, ton message est anonyme.'}{' '}
-          Seul le propriétaire de la plateforme le lit.{' '}
-          {!signedIn && <Link to="/connexion">Se connecter</Link>}
+          {signedIn ? t('fb.withAccount') : t('fb.anonymous')} {t('fb.ownerOnly')}{' '}
+          {!signedIn && <Link to="/connexion">{t('fb.signIn')}</Link>}
         </p>
       </form>
     </main>

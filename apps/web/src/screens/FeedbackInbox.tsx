@@ -7,19 +7,18 @@ import { ConfirmButton } from '../components/ConfirmButton';
 import { ElevationPrompt, useElevated } from '../components/Elevation';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
-import { FEEDBACK_KIND_LABEL, FEEDBACK_STATUS_LABEL } from '../lib/labels';
+import { useI18n } from '../lib/i18n';
+import type { MessageKey } from '../lib/i18n/messages';
+import { FEEDBACK_KIND_KEY, FEEDBACK_STATUS_KEY } from '../lib/labels';
 
-const FILTERS: { value: FeedbackStatus | 'ALL'; label: string }[] = [
-  { value: 'NEW', label: 'Nouveaux' },
-  { value: 'READ', label: 'Lus' },
-  { value: 'DONE', label: 'Traités' },
-  { value: 'ALL', label: 'Tous' },
+const FILTERS: { value: FeedbackStatus | 'ALL'; label: MessageKey }[] = [
+  { value: 'NEW', label: 'fb.inbox.new' },
+  { value: 'READ', label: 'fb.inbox.read' },
+  { value: 'DONE', label: 'fb.inbox.done' },
+  { value: 'ALL', label: 'fb.inbox.all' },
 ];
 
 const STATUS_CLASS = { NEW: 'tag tag-live', READ: 'tag', DONE: 'tag tag-ok' } as const;
-
-const date = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Boîte de réception du propriétaire : lire, classer et supprimer les retours des utilisateurs. */
 export function FeedbackInbox() {
@@ -30,20 +29,21 @@ export function FeedbackInbox() {
 }
 
 function Inbox() {
+  const { t, tn, date } = useI18n();
   const [filter, setFilter] = useState<FeedbackStatus | 'ALL'>('NEW');
   const { list, setStatus, remove, purge } = useFeedbackInbox(filter);
   const elevated = useElevated();
   return (
     <>
       <header className="topbar">
-        <Link className="icon-btn flat" to="/moi" aria-label="Retour">
+        <Link className="icon-btn flat" to="/moi" aria-label={t('common.back')}>
           <Icon name="back" size={24} />
         </Link>
-        <h1 className="title">Retours</h1>
+        <h1 className="title">{t('fb.inbox.title')}</h1>
       </header>
       <div className="page page-wide">
-        <ElevationPrompt reason="Supprimer un retour ou purger demande ton code. Lire et classer ne le demandent pas." />
-        <div className="segmented" role="group" aria-label="Filtrer par statut">
+        <ElevationPrompt reason={t('fb.inbox.reason')} />
+        <div className="segmented" role="group" aria-label={t('fb.inbox.filter')}>
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -51,20 +51,20 @@ function Inbox() {
               aria-pressed={filter === f.value}
               onClick={() => setFilter(f.value)}
             >
-              {f.label}
+              {t(f.label)}
             </button>
           ))}
         </div>
 
         <ErrorNote error={list.error ?? setStatus.error ?? remove.error ?? purge.error} />
-        {list.data?.length === 0 && <p className="muted">Aucun retour dans cette catégorie.</p>}
+        {list.data?.length === 0 && <p className="muted">{t('fb.inbox.empty')}</p>}
 
         <ul className="rows cards-grid">
           {(list.data ?? []).map((f) => (
             <li key={f.id} className="card" style={{ display: 'grid', gap: 8 }}>
               <span className="row-head">
-                <b>{FEEDBACK_KIND_LABEL[f.kind]}</b>
-                <span className={STATUS_CLASS[f.status]}>{FEEDBACK_STATUS_LABEL[f.status]}</span>
+                <b>{t(FEEDBACK_KIND_KEY[f.kind])}</b>
+                <span className={STATUS_CLASS[f.status]}>{t(FEEDBACK_STATUS_KEY[f.status])}</span>
               </span>
               {/* Texte libre d'un inconnu : affiché comme du texte (React échappe), retours à la ligne gardés. */}
               <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: 0 }}>
@@ -72,11 +72,11 @@ function Inbox() {
               </p>
               <span className="muted" style={{ fontSize: 13 }}>
                 {f.author
-                  ? `Admin ${f.author.username}`
+                  ? t('fb.inbox.fromAdmin', { name: f.author.username })
                   : f.contact
-                    ? `Joueur · ${f.contact}`
-                    : 'Joueur anonyme'}{' '}
-                · {date(f.createdAt)}
+                    ? t('fb.inbox.fromPlayer', { name: f.contact })
+                    : t('fb.inbox.fromAnon')}{' '}
+                · {date(f.createdAt, { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
               <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {f.status !== 'READ' && (
@@ -85,7 +85,7 @@ function Inbox() {
                     className="btn btn-sm"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'READ' })}
                   >
-                    Marquer comme lu
+                    {t('fb.inbox.markRead')}
                   </button>
                 )}
                 {f.status !== 'DONE' && (
@@ -94,7 +94,7 @@ function Inbox() {
                     className="btn btn-sm btn-accent"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'DONE' })}
                   >
-                    Marquer comme traité
+                    {t('fb.inbox.markDone')}
                   </button>
                 )}
                 {f.status !== 'NEW' && (
@@ -103,15 +103,15 @@ function Inbox() {
                     className="btn btn-sm"
                     onClick={() => setStatus.mutate({ id: f.id, status: 'NEW' })}
                   >
-                    Remettre en nouveau
+                    {t('fb.inbox.markNew')}
                   </button>
                 )}
                 <ConfirmButton
-                  confirmLabel="Supprimer pour de bon"
+                  confirmLabel={t('fb.inbox.deleteConfirm')}
                   disabled={!elevated}
                   onConfirm={() => remove.mutate(f.id)}
                 >
-                  Supprimer
+                  {t('common.delete')}
                 </ConfirmButton>
               </span>
             </li>
@@ -119,22 +119,19 @@ function Inbox() {
         </ul>
 
         <section className="panel">
-          <h2 className="section-title">Nettoyage</h2>
-          <p className="hint">
-            Les retours traités depuis plus d’un an sont à supprimer (registre RGPD, traitement 6).
-          </p>
+          <h2 className="section-title">{t('fb.inbox.cleanTitle')}</h2>
+          <p className="hint">{t('fb.inbox.cleanHint')}</p>
           <ConfirmButton
-            confirmLabel="Purger maintenant"
+            confirmLabel={t('fb.inbox.purgeConfirm')}
             className="btn"
             disabled={!elevated}
             onConfirm={() => purge.mutate()}
           >
-            Purger les retours traités depuis plus d’un an
+            {t('fb.inbox.purge')}
           </ConfirmButton>
           {purge.data && (
             <p className="notice notice-ok" role="status">
-              {purge.data.deleted} retour{purge.data.deleted > 1 ? 's' : ''} supprimé
-              {purge.data.deleted > 1 ? 's' : ''}.
+              {tn('fb.inbox.purged', purge.data.deleted)}
             </p>
           )}
         </section>

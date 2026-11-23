@@ -213,3 +213,14 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Page publique des joueurs** : colonne centrée de 640 px (elle reste pensée pour le téléphone).
 - **Vérifié** dans le navigateur sur de vraies données de démonstration (élimination, ligue, inscriptions ouvertes) à 1100 px et à 375 px.
 - **Hors périmètre** : mise en page tablette dédiée (entre 520 et 960 px la colonne mobile est centrée), thème clair relu écran par écran, raccourcis clavier.
+
+## D27. Langues de l'interface : français, anglais, espagnol
+
+- **Pourquoi** : Plato est mondial et ses serveurs sont par langue ; les joueurs les plus nombreux parlent français, anglais, espagnol et arabe. On commence par trois langues qui s'écrivent de gauche à droite ; l'arabe (de droite à gauche) demande une mise en page inversée et vient ensuite, puis le persan et l'ourdou, qui ne sont pas de l'arabe mais s'écrivent comme lui.
+- **Pas de bibliothèque** : un catalogue maison (`lib/i18n`). Chaque texte est un **triplet** `[français, anglais, espagnol]` rangé par écran dans `messages/*.ts` : un texte sans ses trois langues ne compile pas (`defineMessages`). Les clés sont typées (`MessageKey`), les paramètres s'écrivent `{nom}`, les nombres passent par `Intl.PluralRules` (clés `…_one` / `…_other`), les dates par `Intl`.
+- **Garde-fous** (`i18n.test.tsx`) : aucun texte vide, aucune clé en double entre deux fichiers, mêmes `{paramètres}` dans les trois langues, chaque pluriel a ses deux formes, et un texte long n'est pas la copie du français.
+- **Choix de la langue** : le choix de la personne (écran Moi, gardé dans `localStorage`, clé `iamin-lang`, aucune donnée personnelle) passe avant la langue par défaut de l'écran (celle d'un tournoi, PR suivante), avant la langue du navigateur, avant le français. `<html lang>` suit.
+- **Sans fournisseur** (tests, composants isolés) : le français.
+- **Noms des langues** : chacune s'écrit dans sa propre langue (« Español »), pour se retrouver sans lire la langue actuelle.
+- **Reste à faire dans les PR suivantes** : langue du tournoi choisie par l'admin (page des joueurs et texte du chat), messages d'erreur de l'API, textes générés par le moteur pour le chat. Tant que ce n'est pas fait, ces trois endroits restent en français.
+- **Qualité des traductions** : écrites par moi, à faire relire par une personne qui parle la langue avant d'ouvrir au public (surtout l'espagnol, visible dans les messages du chat).

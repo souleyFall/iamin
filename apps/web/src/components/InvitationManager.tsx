@@ -1,15 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { useInvitations } from '../api/queries';
 import { copyText } from '../lib/chat';
+import { useI18n } from '../lib/i18n';
 import { ConfirmButton } from './ConfirmButton';
 import { ErrorNote } from './ErrorNote';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function daysLeft(expiresAt: string): string {
-  const days = Math.max(1, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / DAY_MS));
-  return `${days} jour${days > 1 ? 's' : ''}`;
-}
+/** Jours restants, au moins 1 (une invitation encore valable n'affiche jamais « 0 jour »). */
+const daysOf = (expiresAt: string): number =>
+  Math.max(1, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / DAY_MS));
 
 /**
  * Créer, copier et annuler des liens d'invitation. Le lien n'est visible qu'à la création : il est
@@ -33,7 +33,9 @@ export function InvitationManager({
   /** Actions désactivées (ressaisie du code demandée avant). */
   locked?: boolean;
 }) {
+  const { t, tn } = useI18n();
   const { list, create, revoke } = useInvitations(groupId);
+  const daysLeft = (expiresAt: string) => tn('inv.days', daysOf(expiresAt));
   const [copied, setCopied] = useState<boolean | null>(null);
   const [pseudo, setPseudo] = useState('');
   const created = create.data;
@@ -57,7 +59,8 @@ export function InvitationManager({
       >
         <div className="field">
           <label htmlFor="invite-pseudo">
-            Pseudo Plato de la personne{pseudoRequired ? '' : ' (facultatif)'}
+            {t('inv.pseudo')}
+            {pseudoRequired ? '' : t('inv.optional')}
           </label>
           <input
             id="invite-pseudo"
@@ -69,9 +72,7 @@ export function InvitationManager({
             maxLength={64}
             required={pseudoRequired}
           />
-          <p className="hint">
-            Il sera imposé à la création du compte : seule cette personne peut utiliser le lien.
-          </p>
+          <p className="hint">{t('inv.pseudoHint')}</p>
         </div>
         <button type="submit" className="btn btn-accent" disabled={create.isPending || locked}>
           {createLabel}
@@ -82,19 +83,14 @@ export function InvitationManager({
       {created && link && (
         <div role="status">
           <p className="notice notice-ok">
-            Lien créé. Copie-le maintenant : il ne s’affichera plus. Il sert une seule fois et
-            expire dans {daysLeft(created.expiresAt)}.
+            {t('inv.created', { days: daysLeft(created.expiresAt) })}
           </p>
           <code style={{ overflowWrap: 'anywhere' }}>{link}</code>
           <button type="button" className="btn" onClick={() => void copyText(link).then(setCopied)}>
-            Copier le lien
+            {t('inv.copy')}
           </button>
-          {copied === true && <p className="notice notice-ok">Lien copié.</p>}
-          {copied === false && (
-            <p className="notice notice-bad">
-              Copie refusée par le navigateur : sélectionne le lien ci-dessus.
-            </p>
-          )}
+          {copied === true && <p className="notice notice-ok">{t('inv.copied')}</p>}
+          {copied === false && <p className="notice notice-bad">{t('inv.copyRefused')}</p>}
         </div>
       )}
 
@@ -102,19 +98,19 @@ export function InvitationManager({
       {list.data && list.data.length > 0 && (
         <>
           <h3 className="section-title" style={{ fontSize: 16 }}>
-            En attente · {list.data.length}
+            {t('inv.pending', { n: list.data.length })}
           </h3>
           <ul>
             {list.data.map((inv) => (
               <li key={inv.id} className="player-row">
-                <span className="player-name">{inv.platoUsername ?? 'Pseudo libre'}</span>
-                <span className="muted">Expire dans {daysLeft(inv.expiresAt)}</span>
+                <span className="player-name">{inv.platoUsername ?? t('inv.freePseudo')}</span>
+                <span className="muted">{t('inv.expires', { days: daysLeft(inv.expiresAt) })}</span>
                 <ConfirmButton
-                  confirmLabel="Annuler le lien"
+                  confirmLabel={t('inv.cancelLink')}
                   onConfirm={() => revoke.mutate(inv.id)}
                   disabled={revoke.isPending || locked}
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </ConfirmButton>
               </li>
             ))}

@@ -176,6 +176,11 @@ ul {
   width: 100%;
 }
 .btn {
+  /* Lien ou bouton : même allure (un lien n'est ni souligné ni aligné à gauche). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   min-height: 44px;
   padding: 0 16px;
   border-radius: 10px;

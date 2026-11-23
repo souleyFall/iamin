@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
+import { useI18n } from '../lib/i18n';
 
 export function Login() {
   const { user, login, loginWithCode } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState('');
@@ -52,7 +54,7 @@ export function Login() {
         }
       } else {
         // L'API répond pareil pour « compte inconnu » et « mauvais mot de passe » : on ne distingue pas.
-        setError(e instanceof ApiError ? e.message : 'Connexion impossible.');
+        setError(e instanceof ApiError ? e.message : t('login.failed'));
       }
     } finally {
       setBusy(false);
@@ -63,11 +65,11 @@ export function Login() {
     <main className="login">
       <div className="logo">i-am-in</div>
       <form className="panel" onSubmit={(e) => void submit(e)}>
-        <h1 className="section-title">Connexion admin</h1>
+        <h1 className="section-title">{t('login.title')}</h1>
         {challenge === null ? (
           <>
             <div className="field">
-              <label htmlFor="username">Identifiant</label>
+              <label htmlFor="username">{t('login.username')}</label>
               <input
                 id="username"
                 className="input"
@@ -80,7 +82,7 @@ export function Login() {
               />
             </div>
             <div className="field">
-              <label htmlFor="password">Mot de passe</label>
+              <label htmlFor="password">{t('login.password')}</label>
               <input
                 id="password"
                 className="input"
@@ -95,7 +97,7 @@ export function Login() {
         ) : (
           <>
             <div className="field">
-              <label htmlFor="code">Code de l’application d’authentification</label>
+              <label htmlFor="code">{t('login.code')}</label>
               <input
                 id="code"
                 className="input tabular"
@@ -108,12 +110,10 @@ export function Login() {
                 autoFocus
                 required
               />
-              <p className="hint">
-                6 chiffres, ou un code de secours (xxxxx-xxxxx) si tu n’as plus ton téléphone.
-              </p>
+              <p className="hint">{t('login.codeHint')}</p>
             </div>
             <button type="button" className="btn" onClick={() => restart(null)}>
-              Recommencer
+              {t('login.restart')}
             </button>
           </>
         )}
@@ -123,12 +123,11 @@ export function Login() {
           </p>
         )}
         <button className="key key-wide" type="submit" disabled={busy}>
-          {challenge === null ? 'Se connecter' : 'Valider le code'}
+          {challenge === null ? t('login.submit') : t('login.validate')}
         </button>
       </form>
       <p className="notice-standalone">
-        i-am-in est un outil indépendant, non affilié à Plato.{' '}
-        <Link to="/avis">Donner mon avis</Link>
+        {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link>
       </p>
     </main>
   );

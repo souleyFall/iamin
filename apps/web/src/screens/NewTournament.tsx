@@ -7,9 +7,11 @@ import type { Tournament, TournamentFormat } from '../api/types';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { useCurrentGroup } from '../groups/current';
+import { useI18n } from '../lib/i18n';
 
 export function NewTournament() {
   const { current, loading } = useCurrentGroup();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const client = useQueryClient();
   const [name, setName] = useState('');
@@ -24,16 +26,16 @@ export function NewTournament() {
         format,
         capacity,
       }),
-    onSuccess: async (t) => {
+    onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: keys.scope(groupId ?? '') });
-      void navigate(`/tournois/${t.id}/inscrits`);
+      void navigate(`/tournois/${created.id}/inscrits`);
     },
   });
 
   if (loading) {
     return (
       <p className="page muted" role="status">
-        Chargement…
+        {t('common.loading')}
       </p>
     );
   }
@@ -49,20 +51,20 @@ export function NewTournament() {
   return (
     <>
       <header className="topbar">
-        <Link className="icon-btn flat" to="/" aria-label="Retour">
+        <Link className="icon-btn flat" to="/" aria-label={t('common.back')}>
           <Icon name="back" size={24} />
         </Link>
-        <h1 className="title">Nouveau tournoi</h1>
+        <h1 className="title">{t('new.title')}</h1>
       </header>
       <form className="page" onSubmit={submit}>
         <div className="field">
-          <label htmlFor="name">Nom du tournoi</label>
+          <label htmlFor="name">{t('new.name')}</label>
           <input
             id="name"
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex. Échecs #13"
+            placeholder={t('new.namePlaceholder')}
             maxLength={80}
             required
           />
@@ -70,32 +72,30 @@ export function NewTournament() {
         </div>
 
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend>Format</legend>
+          <legend>{t('new.format')}</legend>
           <div className="segmented">
             <button
               type="button"
               aria-pressed={format === 'ELIMINATION'}
               onClick={() => setFormat('ELIMINATION')}
             >
-              Élimination directe
+              {t('format.elimination')}
             </button>
             <button
               type="button"
               aria-pressed={format === 'LEAGUE'}
               onClick={() => setFormat('LEAGUE')}
             >
-              Ligue
+              {t('format.league')}
             </button>
           </div>
           <p className="hint">
-            {format === 'LEAGUE'
-              ? 'Chacun joue contre chacun : 32 joueurs au plus.'
-              : 'Le perdant est éliminé. Les byes vont à des joueurs tirés au sort.'}
+            {format === 'LEAGUE' ? t('new.leagueHint') : t('new.eliminationHint')}
           </p>
         </fieldset>
 
         <div className="field">
-          <label htmlFor="capacity">Nombre de places</label>
+          <label htmlFor="capacity">{t('new.capacity')}</label>
           <input
             id="capacity"
             className="input"
@@ -107,7 +107,7 @@ export function NewTournament() {
             onChange={(e) => setCapacity(Number(e.target.value))}
             required
           />
-          <p className="hint">Au-delà, les inscrits validés vont en liste d’attente.</p>
+          <p className="hint">{t('new.capacityHint')}</p>
           {fieldError.capacity && <p className="error">{fieldError.capacity}</p>}
         </div>
 
@@ -117,11 +117,9 @@ export function NewTournament() {
           type="submit"
           disabled={create.isPending || name.trim().length < 2}
         >
-          Créer le tournoi
+          {t('new.submit')}
         </button>
-        <p className="hint">
-          Tu en auras la main : tu pourras la passer à un autre admin du groupe.
-        </p>
+        <p className="hint">{t('new.holderHint')}</p>
       </form>
     </>
   );

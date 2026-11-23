@@ -10,6 +10,7 @@ import { Icon } from '../components/Icon';
 import { QrCode } from '../components/QrCode';
 import { ActivityPanel, SessionsPanel } from '../components/SecurityPanels';
 import { copyText } from '../lib/chat';
+import { useI18n } from '../lib/i18n';
 
 const STATUS = ['mfa-status'] as const;
 
@@ -18,17 +19,15 @@ const grouped = (secret: string) => secret.replace(/(.{4})/g, '$1 ').trim();
 
 /** Codes de secours : visibles une seule fois, à garder ailleurs que sur le téléphone. */
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState<boolean | null>(null);
   const [saved, setSaved] = useState(false);
   return (
     <section className="panel" aria-labelledby="recovery-title">
       <h2 id="recovery-title" className="section-title">
-        Codes de secours
+        {t('sec.recovery.title')}
       </h2>
-      <p className="notice notice-bad">
-        Ils ne s’afficheront plus. Chacun sert une seule fois si tu perds ton téléphone. Garde-les
-        dans un gestionnaire de mots de passe ou sur papier, pas sur le téléphone.
-      </p>
+      <p className="notice notice-bad">{t('sec.recovery.warn')}</p>
       <ul className="rows" style={{ columns: 2 }}>
         {codes.map((c) => (
           <li key={c}>
@@ -41,18 +40,16 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
         className="btn"
         onClick={() => void copyText(codes.join('\n')).then(setCopied)}
       >
-        Copier les codes
+        {t('sec.recovery.copy')}
       </button>
-      {copied === true && <p className="notice notice-ok">Codes copiés.</p>}
-      {copied === false && (
-        <p className="notice notice-bad">Copie refusée : recopie-les à la main.</p>
-      )}
+      {copied === true && <p className="notice notice-ok">{t('sec.recovery.copied')}</p>}
+      {copied === false && <p className="notice notice-bad">{t('sec.recovery.refused')}</p>}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        J’ai gardé mes codes de secours
+        {t('sec.recovery.saved')}
       </label>
       <button type="button" className="key key-wide" disabled={!saved} onClick={onDone}>
-        Terminer
+        {t('sec.recovery.done')}
       </button>
     </section>
   );
@@ -61,6 +58,7 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
 /** Activation : scanner le QR code, donner un premier code, recevoir les codes de secours. */
 function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
   const { refresh } = useAuth();
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const setup = useMutation({ mutationFn: () => api<MfaSetup>('POST', '/auth/mfa/setup') });
   const enable = useMutation({
@@ -75,12 +73,8 @@ function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
   if (!setup.data) {
     return (
       <section className="panel">
-        <h2 className="section-title">Activer la double authentification</h2>
-        <p>
-          À chaque connexion, en plus du mot de passe, tu donneras un code à 6 chiffres qui change
-          toutes les 30 secondes. Il faut une application d’authentification sur ton téléphone :
-          Microsoft Authenticator, Google Authenticator, Aegis ou 2FAS.
-        </p>
+        <h2 className="section-title">{t('sec.enable.title')}</h2>
+        <p>{t('sec.enable.intro')}</p>
         <ErrorNote error={setup.error} />
         <button
           type="button"
@@ -88,7 +82,7 @@ function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
           disabled={setup.isPending}
           onClick={() => setup.mutate()}
         >
-          Commencer
+          {t('sec.enable.start')}
         </button>
       </section>
     );
@@ -101,24 +95,19 @@ function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
 
   return (
     <form className="panel" onSubmit={submit}>
-      <h2 className="section-title">1. Scanne le QR code</h2>
-      <p className="hint">
-        Dans l’application : « Ajouter un compte », puis « Scanner un code QR ».
-      </p>
-      <QrCode
-        value={setup.data.otpauthUrl}
-        label="QR code à scanner avec l’application d’authentification"
-      />
+      <h2 className="section-title">{t('sec.enable.step1')}</h2>
+      <p className="hint">{t('sec.enable.step1Hint')}</p>
+      <QrCode value={setup.data.otpauthUrl} label={t('sec.enable.qrLabel')} />
       <details>
-        <summary>Le QR code ne se scanne pas ?</summary>
-        <p className="hint">Saisis cette clé à la main (type « basé sur l’heure ») :</p>
+        <summary>{t('sec.enable.noScan')}</summary>
+        <p className="hint">{t('sec.enable.manualKey')}</p>
         <code className="tabular" style={{ overflowWrap: 'anywhere' }}>
           {grouped(setup.data.secret)}
         </code>
       </details>
-      <h2 className="section-title">2. Donne le premier code</h2>
+      <h2 className="section-title">{t('sec.enable.step2')}</h2>
       <div className="field">
-        <label htmlFor="enable-code">Code à 6 chiffres</label>
+        <label htmlFor="enable-code">{t('sec.code6')}</label>
         <input
           id="enable-code"
           className="input tabular"
@@ -136,7 +125,7 @@ function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
         type="submit"
         disabled={enable.isPending || code.trim().length < 6}
       >
-        Activer
+        {t('sec.enable.submit')}
       </button>
     </form>
   );
@@ -145,6 +134,7 @@ function Enable({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
 /** Déjà active : état, nouveaux codes de secours, et désactivation pour les comptes ordinaires. */
 function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: string[]) => void }) {
   const { refresh } = useAuth();
+  const { t, tn } = useI18n();
   const client = useQueryClient();
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -167,21 +157,14 @@ function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: strin
 
   return (
     <section className="panel">
-      <h2 className="section-title">Double authentification</h2>
+      <h2 className="section-title">{t('sec.active.title')}</h2>
       <p>
-        <span className="tag tag-ok">ACTIVE</span>{' '}
-        <span className="muted">
-          {status.recoveryCodesLeft} code{status.recoveryCodesLeft > 1 ? 's' : ''} de secours
-          restant{status.recoveryCodesLeft > 1 ? 's' : ''}
-        </span>
+        <span className="tag tag-ok">{t('sec.active.on')}</span>{' '}
+        <span className="muted">{tn('sec.active.left', status.recoveryCodesLeft)}</span>
       </p>
-      {status.recoveryCodesLeft <= 3 && (
-        <p className="notice notice-bad">
-          Il t’en reste peu : génère de nouveaux codes de secours.
-        </p>
-      )}
+      {status.recoveryCodesLeft <= 3 && <p className="notice notice-bad">{t('sec.active.low')}</p>}
       <div className="field">
-        <label htmlFor="mfa-code">Code à 6 chiffres</label>
+        <label htmlFor="mfa-code">{t('sec.code6')}</label>
         <input
           id="mfa-code"
           className="input tabular"
@@ -191,7 +174,7 @@ function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: strin
           autoComplete="one-time-code"
           maxLength={7}
         />
-        <p className="hint">Demandé pour les deux actions ci-dessous.</p>
+        <p className="hint">{t('sec.active.codeHint')}</p>
       </div>
       <ErrorNote error={regenerate.error ?? disable.error} />
       <button
@@ -200,16 +183,14 @@ function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: strin
         disabled={regenerate.isPending || code.trim().length < 6}
         onClick={() => regenerate.mutate()}
       >
-        Générer de nouveaux codes de secours
+        {t('sec.active.regenerate')}
       </button>
       {status.required ? (
-        <p className="hint">
-          La double authentification est obligatoire pour ton compte : elle ne se désactive pas ici.
-        </p>
+        <p className="hint">{t('sec.active.required')}</p>
       ) : (
         <>
           <div className="field">
-            <label htmlFor="mfa-password">Mot de passe (pour désactiver)</label>
+            <label htmlFor="mfa-password">{t('sec.active.passwordLabel')}</label>
             <input
               id="mfa-password"
               className="input"
@@ -220,11 +201,11 @@ function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: strin
             />
           </div>
           <ConfirmButton
-            confirmLabel="Désactiver"
+            confirmLabel={t('sec.active.disable')}
             disabled={disable.isPending || code.trim().length < 6 || password === ''}
             onConfirm={() => disable.mutate()}
           >
-            Désactiver la double authentification
+            {t('sec.active.disableButton')}
           </ConfirmButton>
         </>
       )}
@@ -235,6 +216,7 @@ function Active({ status, onCodes }: { status: MfaStatus; onCodes: (codes: strin
 /** Écran Sécurité : activer, gérer la double authentification (obligatoire pour le propriétaire). */
 export function Security() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const status = useQuery({
     queryKey: STATUS,
     queryFn: () => api<MfaStatus>('GET', '/auth/mfa'),
@@ -247,17 +229,16 @@ export function Security() {
     <>
       <header className="topbar">
         {!mustEnable && (
-          <Link className="icon-btn flat" to="/moi" aria-label="Retour">
+          <Link className="icon-btn flat" to="/moi" aria-label={t('common.back')}>
             <Icon name="back" size={24} />
           </Link>
         )}
-        <h1 className="title">Sécurité</h1>
+        <h1 className="title">{t('sec.title')}</h1>
       </header>
       <div className="page page-wide panels-grid">
         {mustEnable && (
           <p className="notice notice-bad desk-full" role="status">
-            La double authentification est obligatoire pour le propriétaire de la plateforme.
-            Active-la pour continuer.
+            {t('sec.mustEnable')}
           </p>
         )}
         <ErrorNote error={status.error} />
