@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../auth/session';
+import { useI18n } from '../lib/i18n';
 import { ErrorNote } from './ErrorNote';
 
 /** Les actions sensibles sont-elles permises ? (connexion avec code ou ressaisie < 10 minutes) */
@@ -26,6 +27,7 @@ export function useElevated(): boolean {
  */
 export function ElevationPrompt({ reason }: { reason: string }) {
   const { refresh } = useAuth();
+  const { t } = useI18n();
   const elevated = useElevated();
   const [code, setCode] = useState('');
   const confirm = useMutation({
@@ -44,11 +46,11 @@ export function ElevationPrompt({ reason }: { reason: string }) {
   }
 
   return (
-    <form className="panel" onSubmit={submit} aria-label="Confirmer avec ton code">
-      <h2 className="section-title">Confirme avec ton code</h2>
+    <form className="panel" onSubmit={submit} aria-label={t('elev.aria')}>
+      <h2 className="section-title">{t('elev.title')}</h2>
       <p className="hint">{reason}</p>
       <div className="field">
-        <label htmlFor="elevate-code">Code à 6 chiffres</label>
+        <label htmlFor="elevate-code">{t('sec.code6')}</label>
         <input
           id="elevate-code"
           className="input tabular"
@@ -66,7 +68,7 @@ export function ElevationPrompt({ reason }: { reason: string }) {
         type="submit"
         disabled={confirm.isPending || code.trim().length < 6}
       >
-        Confirmer
+        {t('common.confirm')}
       </button>
     </form>
   );

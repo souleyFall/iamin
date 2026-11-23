@@ -6,25 +6,32 @@ import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { RelayOffer } from '../components/RelayOffer';
 import { useCurrentGroup } from '../groups/current';
-import { countsLine, FORMAT_LABEL, STATUS_CLASS, STATUS_LABEL } from '../lib/labels';
+import { useI18n, type I18n } from '../lib/i18n';
+import { countsLine, FORMAT_KEY, STATUS_CLASS, STATUS_KEY } from '../lib/labels';
 
-function relayLine(t: TournamentSummary, meId: string): { text: string; className: string } {
-  if (t.status === 'FINISHED') return { text: 'Terminé', className: 'muted' };
-  if (t.holder?.id === meId) return { text: 'Tu as la main', className: 'notice-ok' };
-  if (t.holder) return { text: `Main : ${t.holder.username}`, className: 'muted' };
-  return { text: 'Personne n’a la main', className: 'muted' };
+function relayLine(
+  t: TournamentSummary,
+  meId: string,
+  tr: I18n['t'],
+): { text: string; className: string } {
+  if (t.status === 'FINISHED') return { text: tr('list.relay.finished'), className: 'muted' };
+  if (t.holder?.id === meId) return { text: tr('list.relay.you'), className: 'notice-ok' };
+  if (t.holder)
+    return { text: tr('list.relay.other', { name: t.holder.username }), className: 'muted' };
+  return { text: tr('list.relay.nobody'), className: 'muted' };
 }
 
 function GroupPicker() {
   const { groups, current, select } = useCurrentGroup();
+  const { t, tn } = useI18n();
   if (!current) return null;
-  const members = `${current.memberCount} admin${current.memberCount > 1 ? 's' : ''}`;
+  const members = tn('members.count', current.memberCount);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
       {groups.length > 1 ? (
         <>
           <label className="sr-only" htmlFor="group-select">
-            Groupe
+            {t('list.group')}
           </label>
           <select
             id="group-select"
@@ -52,12 +59,13 @@ function GroupPicker() {
 
 export function Tournaments() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { current, loading, error: groupsError } = useCurrentGroup();
   const readable = current !== undefined && current.myRole !== null;
   const tournaments = useTournaments(readable ? current.id : undefined);
   const meId = user?.id ?? '';
 
-  const offers = (tournaments.data ?? []).filter((t) => t.handoverTo?.id === meId);
+  const offers = (tournaments.data ?? []).filter((tour) => tour.handoverTo?.id === meId);
 
   return (
     <>
@@ -69,62 +77,52 @@ export function Tournaments() {
         <ErrorNote error={groupsError} />
         {loading && (
           <p className="muted" role="status">
-            Chargement…
+            {t('common.loading')}
           </p>
         )}
 
         {!loading && !current && user?.role === 'GROUP_CREATOR' && (
           <>
-            <p className="card">Tu es super admin : crée ton premier groupe pour commencer.</p>
+            <p className="card">{t('list.creatorHint')}</p>
             <Link className="key key-wide" to="/groupe/nouveau">
               <Icon name="plus" stroke={2.25} />
-              Créer un groupe
+              {t('list.createGroup')}
             </Link>
           </>
         )}
         {!loading && !current && user?.role === 'PLATFORM_OWNER' && (
-          <p className="card">
-            Aucun groupe pour l’instant. Invite un super admin depuis l’onglet Moi : c’est lui qui
-            crée les groupes.
-          </p>
+          <p className="card">{t('list.ownerHint')}</p>
         )}
         {!loading && !current && user?.role === 'MEMBER' && (
-          <p className="card">
-            Tu n’es membre d’aucun groupe. Demande une invitation à un super admin de ton groupe.
-          </p>
+          <p className="card">{t('list.memberHint')}</p>
         )}
-        {current && !readable && (
-          <p className="card">
-            Le propriétaire de la plateforme n’accède pas aux tournois des groupes : connecte-toi
-            avec un compte admin de groupe.
-          </p>
-        )}
+        {current && !readable && <p className="card">{t('list.ownerNoAccess')}</p>}
 
         {readable &&
-          offers.map((t) => <RelayOffer key={t.id} groupId={current.id} tournament={t} />)}
+          offers.map((tour) => <RelayOffer key={tour.id} groupId={current.id} tournament={tour} />)}
 
         {readable && (
           <>
             <h1 className="title" style={{ paddingTop: 6 }}>
-              Mes tournois
+              {t('list.title')}
             </h1>
             <ErrorNote error={tournaments.error} />
-            {tournaments.data?.length === 0 && (
-              <p className="muted">Aucun tournoi pour l’instant. Crée le premier ci-dessous.</p>
-            )}
+            {tournaments.data?.length === 0 && <p className="muted">{t('list.empty')}</p>}
             <ul className="rows rows-cards">
-              {(tournaments.data ?? []).map((t) => {
-                const relay = relayLine(t, meId);
+              {(tournaments.data ?? []).map((tour) => {
+                const relay = relayLine(tour, meId, t);
                 return (
-                  <li key={t.id}>
-                    <Link className="row-link" to={`/tournois/${t.id}`}>
+                  <li key={tour.id}>
+                    <Link className="row-link" to={`/tournois/${tour.id}`}>
                       <span className="row-head">
-                        <span className="row-name">{t.name}</span>
-                        <span className={STATUS_CLASS[t.status]}>{STATUS_LABEL[t.status]}</span>
+                        <span className="row-name">{tour.name}</span>
+                        <span className={STATUS_CLASS[tour.status]}>
+                          {t(STATUS_KEY[tour.status])}
+                        </span>
                       </span>
-                      <span className="muted">{FORMAT_LABEL[t.format]}</span>
+                      <span className="muted">{t(FORMAT_KEY[tour.format])}</span>
                       <span className="row-head">
-                        <span className="tabular">{countsLine(t.counts, t.capacity)}</span>
+                        <span className="tabular">{countsLine(tour.counts, tour.capacity, t)}</span>
                         <span className={relay.className} style={{ fontSize: 13, fontWeight: 600 }}>
                           {relay.text}
                         </span>
@@ -136,7 +134,7 @@ export function Tournaments() {
             </ul>
             <Link className="key key-wide" to="/nouveau">
               <Icon name="plus" stroke={2.25} />
-              Nouveau tournoi
+              {t('list.new')}
             </Link>
           </>
         )}

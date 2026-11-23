@@ -6,9 +6,11 @@ import { Icon } from '../components/Icon';
 import { InvitationManager } from '../components/InvitationManager';
 import { initialOf } from '../lib/labels';
 import { useCurrentGroup } from '../groups/current';
+import { useI18n } from '../lib/i18n';
 
 export function GroupScreen() {
   const { user } = useAuth();
+  const { t, tn } = useI18n();
   const { current } = useCurrentGroup();
   const group = useGroup(current?.myRole === null ? undefined : current?.id);
 
@@ -16,23 +18,20 @@ export function GroupScreen() {
     <>
       <header className="topbar">
         <h1 className="title" style={{ padding: '4px 4px 0' }}>
-          Groupe
+          {t('group.title')}
         </h1>
       </header>
       <div className="page page-wide desk-grid">
         <div className="desk-main">
           {!current && (
             <p className="muted">
-              {user?.role === 'GROUP_CREATOR' ? 'Tu n’as pas encore de groupe.' : 'Aucun groupe.'}
+              {user?.role === 'GROUP_CREATOR' ? t('group.creatorNone') : t('group.none')}
             </p>
           )}
           {current && (
             <p>
               <b style={{ fontSize: 18 }}>{current.name}</b>
-              <span className="muted">
-                {' '}
-                · {current.memberCount} admin{current.memberCount > 1 ? 's' : ''}
-              </span>
+              <span className="muted"> · {tn('members.count', current.memberCount)}</span>
             </p>
           )}
           <ErrorNote error={group.error} />
@@ -53,9 +52,9 @@ export function GroupScreen() {
             <InvitationManager
               key={current.id}
               groupId={current.id}
-              title="Inviter un admin"
-              createLabel="Créer un lien d’invitation"
-              intro="Un admin gère les tournois du groupe. Envoie-lui le lien : il crée son compte, ou rejoint le groupe s’il en a déjà un."
+              title={t('group.inviteTitle')}
+              createLabel={t('inv.createLink')}
+              intro={t('group.inviteIntro')}
             />
           </div>
         )}
@@ -63,7 +62,7 @@ export function GroupScreen() {
           <div className="desk-b">
             <Link className="key key-wide" to="/groupe/nouveau">
               <Icon name="plus" stroke={2.25} />
-              Créer un groupe
+              {t('group.create')}
             </Link>
           </div>
         )}

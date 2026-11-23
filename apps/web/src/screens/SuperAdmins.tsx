@@ -3,28 +3,30 @@ import { useAuth } from '../auth/session';
 import { Icon } from '../components/Icon';
 import { ElevationPrompt, useElevated } from '../components/Elevation';
 import { InvitationManager } from '../components/InvitationManager';
+import { useI18n } from '../lib/i18n';
 
 /** Le propriétaire de la plateforme valide les super admins en leur envoyant un lien d'invitation. */
 export function SuperAdmins() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const elevated = useElevated();
   if (user?.role !== 'PLATFORM_OWNER') return <Navigate to="/" replace />;
   return (
     <>
       <header className="topbar">
-        <Link className="icon-btn flat" to="/moi" aria-label="Retour">
+        <Link className="icon-btn flat" to="/moi" aria-label={t('common.back')}>
           <Icon name="back" size={24} />
         </Link>
-        <h1 className="title">Super admins</h1>
+        <h1 className="title">{t('sa.title')}</h1>
       </header>
       <div className="page">
-        <ElevationPrompt reason="Inviter ou annuler l'invitation d'un super admin demande ton code : une session volée ne suffirait pas." />
+        <ElevationPrompt reason={t('sa.reason')} />
         <InvitationManager
           locked={!elevated}
-          title="Inviter un super admin"
-          createLabel="Créer un lien d’invitation"
+          title={t('sa.invite')}
+          createLabel={t('inv.createLink')}
           pseudoRequired
-          intro="Un super admin crée ses propres groupes, puis y invite ses admins. Toi, tu ne fais que le valider : tu ne vois pas le contenu de ses groupes."
+          intro={t('sa.intro')}
         />
       </div>
     </>

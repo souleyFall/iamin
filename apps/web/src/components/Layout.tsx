@@ -1,33 +1,36 @@
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/session';
 import { GroupProvider } from '../groups/current';
+import { useI18n } from '../lib/i18n';
+import type { MessageKey } from '../lib/i18n/messages';
 import { Icon, type IconName } from './Icon';
 
 interface Tab {
   to: string;
-  label: string;
+  label: MessageKey;
   icon: IconName;
 }
 
 /** Les trois entrées du téléphone (barre du bas) : aussi celles du haut de la barre latérale. */
 const TABS: Tab[] = [
-  { to: '/', label: 'Tournois', icon: 'trophy' },
-  { to: '/groupe', label: 'Groupe', icon: 'users' },
-  { to: '/moi', label: 'Moi', icon: 'user' },
+  { to: '/', label: 'nav.tournaments', icon: 'trophy' },
+  { to: '/groupe', label: 'nav.group', icon: 'users' },
+  { to: '/moi', label: 'nav.me', icon: 'user' },
 ];
 
 /** Entrées en plus sur ordinateur seulement : la barre du bas du téléphone n'a pas la place. */
 const OWNER_TABS: Tab[] = [
-  { to: '/super-admins', label: 'Super admins', icon: 'userPlus' },
-  { to: '/retours', label: 'Retours', icon: 'inbox' },
+  { to: '/super-admins', label: 'nav.superAdmins', icon: 'userPlus' },
+  { to: '/retours', label: 'nav.feedback', icon: 'inbox' },
 ];
-const ACCOUNT_TABS: Tab[] = [{ to: '/securite', label: 'Sécurité', icon: 'shield' }];
+const ACCOUNT_TABS: Tab[] = [{ to: '/securite', label: 'nav.security', icon: 'shield' }];
 
 function NavItem({ tab, desktopOnly = false }: { tab: Tab; desktopOnly?: boolean }) {
+  const { t } = useI18n();
   return (
     <NavLink to={tab.to} end={tab.to === '/'} className={desktopOnly ? 'nav-extra' : undefined}>
       <Icon name={tab.icon} size={24} />
-      {tab.label}
+      {t(tab.label)}
     </NavLink>
   );
 }
@@ -38,11 +41,12 @@ function NavItem({ tab, desktopOnly = false }: { tab: Tab; desktopOnly?: boolean
  */
 export function Layout() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   if (user === undefined)
     return (
       <p className="page muted" role="status">
-        Chargement…
+        {t('common.loading')}
       </p>
     );
   if (user === null)
@@ -58,24 +62,24 @@ export function Layout() {
         <main className="shell-main">
           <Outlet />
         </main>
-        <nav className="nav" aria-label="Navigation">
+        <nav className="nav" aria-label={t('nav.label')}>
           <div className="nav-brand logo" aria-hidden="true">
             i-am-in
           </div>
-          {TABS.map((t) => (
-            <NavItem key={t.to} tab={t} />
+          {TABS.map((tab) => (
+            <NavItem key={tab.to} tab={tab} />
           ))}
           {isOwner && (
             <>
-              <p className="nav-section nav-extra">Plateforme</p>
-              {OWNER_TABS.map((t) => (
-                <NavItem key={t.to} tab={t} desktopOnly />
+              <p className="nav-section nav-extra">{t('nav.platform')}</p>
+              {OWNER_TABS.map((tab) => (
+                <NavItem key={tab.to} tab={tab} desktopOnly />
               ))}
             </>
           )}
-          <p className="nav-section nav-extra">Compte</p>
-          {ACCOUNT_TABS.map((t) => (
-            <NavItem key={t.to} tab={t} desktopOnly />
+          <p className="nav-section nav-extra">{t('nav.account')}</p>
+          {ACCOUNT_TABS.map((tab) => (
+            <NavItem key={tab.to} tab={tab} desktopOnly />
           ))}
           <div className="nav-user nav-extra">
             <span className="avatar" aria-hidden="true">
@@ -84,7 +88,11 @@ export function Layout() {
             <span className="nav-user-text">
               <b>{user.username}</b>
               <span className="muted">
-                {isOwner ? 'Propriétaire' : user.role === 'GROUP_CREATOR' ? 'Super admin' : 'Admin'}
+                {isOwner
+                  ? t('role.owner')
+                  : user.role === 'GROUP_CREATOR'
+                    ? t('role.creator')
+                    : t('role.admin')}
               </span>
             </span>
           </div>

@@ -2,6 +2,11 @@ import { buildBracket, buildLeague, computeStandings, resolveBracket } from '@ia
 import { describe, expect, it } from 'vitest';
 import type { BracketView, LeagueView, Registration, Tournament } from '../api/types';
 import { chatChoices, namesOf } from './chat';
+import { translate, type Params } from './i18n';
+import type { MessageKey } from './i18n/messages';
+
+/** Les libellés du menu en français : la langue de référence des assertions de ce fichier. */
+const tr = (key: MessageKey, params?: Params) => translate('fr', key, params);
 
 const reg = (
   id: string,
@@ -60,7 +65,7 @@ const view = (
 describe('chatChoices', () => {
   it('ne propose que la liste des inscrits avant le tirage', () => {
     const t = tournament('ELIMINATION', [...players, reg('p5', 'Zack_42', 'WAITLIST')]);
-    const choices = chatChoices(t, undefined);
+    const choices = chatChoices(t, undefined, tr);
     expect(choices.map((c) => c.key)).toEqual(['registrations']);
     expect(choices[0]?.text).toContain('Inscrits : 4/4 places');
     expect(choices[0]?.text).toContain("Liste d'attente : 1");
@@ -79,7 +84,7 @@ describe('chatChoices', () => {
       bracket: { size: bracket.size, byes: bracket.byes, rounds: resolved.rounds },
       champion: null,
     };
-    const choices = chatChoices(t, draw);
+    const choices = chatChoices(t, draw, tr);
     expect(choices.map((c) => c.label)).toEqual([
       'Liste des inscrits',
       'Demi-finales : VS',
@@ -104,11 +109,11 @@ describe('chatChoices', () => {
       scores,
       standings: computeStandings(league, scores),
     };
-    const labels = chatChoices(t, draw).map((c) => c.label);
+    const labels = chatChoices(t, draw, tr).map((c) => c.label);
     expect(labels).toContain('Journée 1 : VS');
     expect(labels).toContain('Journée 3 : résultats');
     expect(labels.at(-1)).toBe('Classement');
-    const results = chatChoices(t, draw).find((c) => c.key === 'results-1')?.text ?? '';
+    const results = chatChoices(t, draw, tr).find((c) => c.key === 'results-1')?.text ?? '';
     expect(results).toContain('2-1');
   });
 
@@ -117,7 +122,7 @@ describe('chatChoices', () => {
       reg('p1', 'Gentil\nFAUX : tu as perdu'),
       players[1] as Registration,
     ]);
-    const text = chatChoices(t, undefined)[0]?.text ?? '';
+    const text = chatChoices(t, undefined, tr)[0]?.text ?? '';
     expect(text).not.toContain('\nFAUX');
     expect(text.split('\n').some((line) => line.startsWith('FAUX'))).toBe(false);
   });

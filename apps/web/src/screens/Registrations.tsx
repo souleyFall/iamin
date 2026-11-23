@@ -3,32 +3,34 @@ import type { Registration } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { ErrorNote } from '../components/ErrorNote';
 import { copyText } from '../lib/chat';
+import { useI18n } from '../lib/i18n';
 import { initialOf, isOpenStatus } from '../lib/labels';
 import { useTournamentCtx } from './tournament-context';
 
 /** Le lien à donner aux joueurs : inscription, puis suivi en direct. */
 function ShareLink({ slug }: { slug: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState<boolean | null>(null);
   const url = `${window.location.origin}/t/${slug}`;
   return (
     <div className="panel desk-a">
-      <h2 className="section-title">Lien pour les joueurs</h2>
+      <h2 className="section-title">{t('reg.shareTitle')}</h2>
       <code style={{ overflowWrap: 'anywhere' }}>{url}</code>
       <button
         type="button"
         className="btn btn-accent"
         onClick={() => void copyText(url).then(setCopied)}
       >
-        Copier le lien
+        {t('reg.copyLink')}
       </button>
       {copied === true && (
         <p className="notice notice-ok" role="status">
-          Lien copié.
+          {t('reg.linkCopied')}
         </p>
       )}
       {copied === false && (
         <p className="notice notice-bad" role="status">
-          Copie refusée par le navigateur : sélectionne le lien ci-dessus.
+          {t('reg.copyRefused')}
         </p>
       )}
     </div>
@@ -37,6 +39,7 @@ function ShareLink({ slug }: { slug: string }) {
 
 export function Registrations() {
   const { tournament, isHolder, act } = useTournamentCtx();
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const open = isOpenStatus(tournament.status);
   const canWrite = isHolder && open;
@@ -59,12 +62,12 @@ export function Registrations() {
       <ShareLink slug={tournament.publicSlug} />
 
       <div className="desk-main">
-        {!open && <p className="card">Le tirage est fait : la liste des joueurs est figée.</p>}
+        {!open && <p className="card">{t('reg.frozen')}</p>}
         <section aria-labelledby="pending-title">
           <h2 id="pending-title" className="section-title">
-            À valider · {pending.length}
+            {t('reg.pendingTitle', { n: pending.length })}
           </h2>
-          {pending.length === 0 && <p className="muted">Aucune inscription en attente.</p>}
+          {pending.length === 0 && <p className="muted">{t('reg.pendingNone')}</p>}
           <ul>
             {pending.map((r) => (
               <li key={r.id} className="player-row">
@@ -74,31 +77,29 @@ export function Registrations() {
                   type="button"
                   className="btn btn-primary"
                   disabled={!canWrite || act.isPending}
-                  aria-label={`Valider ${r.platoName}`}
+                  aria-label={t('reg.approveAria', { name: r.platoName })}
                   onClick={() =>
                     act.mutate({ method: 'POST', path: `/registrations/${r.id}/accept` })
                   }
                 >
-                  Valider
+                  {t('reg.approve')}
                 </button>
                 <ConfirmButton
-                  confirmLabel="Refuser"
+                  confirmLabel={t('reg.refuse')}
                   disabled={!canWrite || act.isPending}
                   onConfirm={() => remove(r.id)}
                 >
-                  Refuser
+                  {t('reg.refuse')}
                 </ConfirmButton>
               </li>
             ))}
           </ul>
-          <p className="hint">
-            Compare le pseudo avec Plato avant de valider : c’est ta seule vérification.
-          </p>
+          <p className="hint">{t('reg.comparePlato')}</p>
         </section>
 
         <section aria-labelledby="accepted-title">
           <h2 id="accepted-title" className="section-title">
-            Inscrits · {accepted.length} / {tournament.capacity}
+            {t('reg.acceptedTitle', { n: accepted.length, cap: tournament.capacity })}
           </h2>
           <ul>
             {accepted.map((r) => (
@@ -107,11 +108,11 @@ export function Registrations() {
                 <span className="player-name">{r.platoName}</span>
                 {open && (
                   <ConfirmButton
-                    confirmLabel="Retirer"
+                    confirmLabel={t('reg.remove')}
                     disabled={!canWrite || act.isPending}
                     onConfirm={() => remove(r.id)}
                   >
-                    Retirer
+                    {t('reg.remove')}
                   </ConfirmButton>
                 )}
               </li>
@@ -122,7 +123,7 @@ export function Registrations() {
         {waitlist.length > 0 && (
           <section aria-labelledby="waitlist-title">
             <h2 id="waitlist-title" className="section-title">
-              Liste d’attente · {waitlist.length}
+              {t('reg.waitlistTitle', { n: waitlist.length })}
             </h2>
             <ul>
               {waitlist.map((r, i) => (
@@ -131,17 +132,17 @@ export function Registrations() {
                   <span className="player-name">{r.platoName}</span>
                   {open && (
                     <ConfirmButton
-                      confirmLabel="Retirer"
+                      confirmLabel={t('reg.remove')}
                       disabled={!canWrite || act.isPending}
                       onConfirm={() => remove(r.id)}
                     >
-                      Retirer
+                      {t('reg.remove')}
                     </ConfirmButton>
                   )}
                 </li>
               ))}
             </ul>
-            <p className="hint">Le premier passe inscrit dès qu’une place se libère.</p>
+            <p className="hint">{t('reg.waitlistHint')}</p>
           </section>
         )}
       </div>
@@ -149,13 +150,13 @@ export function Registrations() {
       {canWrite && (
         <form className="panel desk-b" onSubmit={add}>
           <div className="field">
-            <label htmlFor="add-player">Ajouter un joueur</label>
+            <label htmlFor="add-player">{t('reg.addTitle')}</label>
             <input
               id="add-player"
               className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Pseudo Plato"
+              placeholder={t('reg.addPlaceholder')}
               autoComplete="off"
               maxLength={40}
             />
@@ -165,7 +166,7 @@ export function Registrations() {
             type="submit"
             disabled={act.isPending || name.trim() === ''}
           >
-            Ajouter
+            {t('reg.add')}
           </button>
         </form>
       )}

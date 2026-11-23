@@ -27,6 +27,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 19  | `feat(auth)` : double authentification (TOTP) du propriétaire, ressaisie du code   | fusionnée |
 | 20  | `feat(auth)` : verrouillage par adresse, sessions actives, journal de sécurité     | fusionnée |
 | 21  | `feat(web)` : mise en page ordinateur (barre latérale, deux colonnes, cartes)      | fusionnée |
+| 22  | `feat(i18n)` : interface en français, anglais et espagnol                          | fusionnée |
 
 ## Après
 

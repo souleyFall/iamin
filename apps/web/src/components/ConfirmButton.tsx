@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useI18n } from '../lib/i18n';
 
 /** Action destructrice en deux temps (pas de `window.confirm` : rien de bloquant, testable). */
 export function ConfirmButton({
@@ -14,6 +15,7 @@ export function ConfirmButton({
   disabled?: boolean;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [asking, setAsking] = useState(false);
   if (!asking) {
     return (
@@ -40,7 +42,7 @@ export function ConfirmButton({
         {confirmLabel}
       </button>
       <button type="button" className="btn" onClick={() => setAsking(false)}>
-        Non
+        {t('common.no')}
       </button>
     </span>
   );

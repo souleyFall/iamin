@@ -1,5 +1,7 @@
-import { bracketRoundName } from '@iamin/engine';
 import { isBracketView, type DrawView, type Score } from '../api/types';
+import { useI18n, type I18n } from '../lib/i18n';
+import type { MessageKey } from '../lib/i18n/messages';
+import { roundName } from '../lib/labels';
 
 export interface Line {
   code: string;
@@ -18,11 +20,11 @@ export interface Round {
 }
 
 /** Les matchs d'un tour (élimination) ou d'une journée (ligue), sous une forme commune. */
-export function roundsOf(draw: DrawView): Round[] {
+export function roundsOf(draw: DrawView, t: I18n['t']): Round[] {
   if (isBracketView(draw)) {
     const total = draw.bracket.rounds.length;
     return draw.bracket.rounds.map((matches, i) => ({
-      label: bracketRoundName(i + 1, total),
+      label: roundName(i + 1, total, t),
       lines: matches.map((m) => ({
         code: m.id,
         a: m.a,
@@ -34,7 +36,7 @@ export function roundsOf(draw: DrawView): Round[] {
     }));
   }
   return draw.schedule.rounds.map((matches, i) => ({
-    label: `Journée ${i + 1}`,
+    label: t('chat.round', { n: i + 1 }),
     rest: draw.schedule.rests[i],
     lines: matches.map((m) => {
       const score = draw.scores[m.id] ?? null;
@@ -50,11 +52,11 @@ export function roundsOf(draw: DrawView): Round[] {
   }));
 }
 
-const STATE_TAG: Record<Line['state'], { text: string; className: string }> = {
-  done: { text: 'TERMINÉ', className: 'tag tag-ok' },
-  ready: { text: 'À JOUER', className: 'tag' },
-  waiting: { text: 'EN ATTENTE', className: 'tag' },
-  bye: { text: 'BYE', className: 'tag' },
+const STATE_TAG: Record<Line['state'], { text: MessageKey; className: string }> = {
+  done: { text: 'match.state.done', className: 'tag tag-ok' },
+  ready: { text: 'match.state.ready', className: 'tag' },
+  waiting: { text: 'match.state.waiting', className: 'tag' },
+  bye: { text: 'match.state.bye', className: 'tag' },
 };
 
 /** Le tour à afficher par défaut : le premier où il reste un match à jouer, sinon le dernier. */
@@ -76,8 +78,9 @@ export function RoundTabs({
   index: number;
   onPick: (i: number) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <div className="tabs" role="tablist" aria-label="Tours">
+    <div className="tabs" role="tablist" aria-label={t('rounds.label')}>
       {rounds.map((r, i) => (
         <button
           key={r.label}
@@ -115,16 +118,19 @@ export function MatchContent({
   position: number;
   nameOf: (id: string | null) => string;
 }) {
+  const { t } = useI18n();
   const aWins = line.score !== null && line.score.a > line.score.b;
   const bWins = line.score !== null && line.score.b > line.score.a;
-  const tag = line.forfeit ? { text: 'FORFAIT', className: 'tag tag-bad' } : STATE_TAG[line.state];
+  const tag = line.forfeit
+    ? { text: 'match.state.forfeit' as MessageKey, className: 'tag tag-bad' }
+    : STATE_TAG[line.state];
   return (
     <>
       <span className="row-head">
         <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>
-          Match {position}
+          {t('match.n', { n: position })}
         </span>
-        <span className={tag.className}>{tag.text}</span>
+        <span className={tag.className}>{t(tag.text)}</span>
       </span>
       {(
         [

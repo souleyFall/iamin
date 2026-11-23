@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/session';
+import { I18nProvider } from './lib/i18n';
 import { applyTheme, initialTheme } from './lib/theme';
 import './styles/tokens.css';
 import './styles/app.css';
@@ -42,11 +43,13 @@ if (!root) throw new Error('Élément #root introuvable');
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={client}>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <I18nProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </I18nProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

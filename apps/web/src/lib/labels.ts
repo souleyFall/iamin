@@ -1,30 +1,33 @@
 import type {
   FeedbackKind,
-  SecurityEventType,
   FeedbackStatus,
   Presence,
+  SecurityEventType,
   TournamentFormat,
   TournamentStatus,
 } from '../api/types';
+import type { I18n } from './i18n';
+import type { MessageKey } from './i18n/messages';
 
-export const FEEDBACK_KIND_LABEL: Record<FeedbackKind, string> = {
-  IDEA: 'Idée',
-  IMPROVEMENT: 'Amélioration',
-  BUG: 'Bug',
-  OTHER: 'Autre',
+/** Les libellés sont des clés de traduction : l'écran appelle `t(...)` avec la langue du moment. */
+export const FEEDBACK_KIND_KEY: Record<FeedbackKind, MessageKey> = {
+  IDEA: 'feedback.kind.IDEA',
+  IMPROVEMENT: 'feedback.kind.IMPROVEMENT',
+  BUG: 'feedback.kind.BUG',
+  OTHER: 'feedback.kind.OTHER',
 };
 
-export const FEEDBACK_STATUS_LABEL: Record<FeedbackStatus, string> = {
-  NEW: 'NOUVEAU',
-  READ: 'LU',
-  DONE: 'TRAITÉ',
+export const FEEDBACK_STATUS_KEY: Record<FeedbackStatus, MessageKey> = {
+  NEW: 'feedback.status.NEW',
+  READ: 'feedback.status.READ',
+  DONE: 'feedback.status.DONE',
 };
 
-export const STATUS_LABEL: Record<TournamentStatus, string> = {
-  REGISTRATION: 'INSCRIPTIONS',
-  CHECK_IN: 'POINTAGE',
-  STARTED: 'EN JEU',
-  FINISHED: 'TERMINÉ',
+export const STATUS_KEY: Record<TournamentStatus, MessageKey> = {
+  REGISTRATION: 'status.registration',
+  CHECK_IN: 'status.checkIn',
+  STARTED: 'status.started',
+  FINISHED: 'status.finished',
 };
 
 export const STATUS_CLASS: Record<TournamentStatus, string> = {
@@ -34,15 +37,15 @@ export const STATUS_CLASS: Record<TournamentStatus, string> = {
   FINISHED: 'tag',
 };
 
-export const FORMAT_LABEL: Record<TournamentFormat, string> = {
-  ELIMINATION: 'Élimination directe',
-  LEAGUE: 'Ligue',
+export const FORMAT_KEY: Record<TournamentFormat, MessageKey> = {
+  ELIMINATION: 'format.elimination',
+  LEAGUE: 'format.league',
 };
 
-export const PRESENCE_LABEL: Record<Presence, string> = {
-  UNKNOWN: 'à pointer',
-  PRESENT: 'présent',
-  ABSENT: 'absent',
+export const PRESENCE_KEY: Record<Presence, MessageKey> = {
+  UNKNOWN: 'presence.unknown',
+  PRESENT: 'presence.present',
+  ABSENT: 'presence.absent',
 };
 
 /** Le tirage fige la liste : avant lui, inscriptions et pointage se modifient. */
@@ -52,56 +55,61 @@ export const isOpenStatus = (s: TournamentStatus): boolean =>
 /** Première lettre d'un pseudo, pour la pastille. */
 export const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? '?';
 
-/** Ex. « 14 / 16 inscrits · 3 en attente ». */
+/** Ex. « 14 / 16 inscrits · 3 en attente de validation ». */
 export function countsLine(
   c: { pending: number; accepted: number; waitlist: number },
   cap: number,
+  t: I18n['t'],
 ) {
-  const parts = [`${c.accepted} / ${cap} inscrits`];
-  if (c.waitlist > 0) parts.push(`${c.waitlist} en liste d'attente`);
-  if (c.pending > 0) parts.push(`${c.pending} en attente de validation`);
+  const parts = [t('counts.registered', { accepted: c.accepted, cap })];
+  if (c.waitlist > 0) parts.push(t('counts.waitlist', { n: c.waitlist }));
+  if (c.pending > 0) parts.push(t('counts.pending', { n: c.pending }));
   return parts.join(' · ');
 }
 
-const EVENT_LABEL: Record<string, string> = {
-  TOURNAMENT_CREATED: 'Tournoi créé',
-  TOURNAMENT_UPDATED: 'Réglages modifiés',
-  PLAYER_REGISTERED: 'Inscription reçue',
-  PLAYER_WITHDREW: 'Un joueur a annulé son inscription',
-  PLAYER_ADDED: 'Joueur ajouté par un admin',
-  PLAYER_ACCEPTED: 'Inscription validée',
-  PLAYER_PROMOTED: 'Liste d’attente : joueur promu',
-  PLAYER_REMOVED: 'Joueur retiré',
-  PRESENCE_SET: 'Présence pointée',
-  DRAW_DONE: 'Tirage effectué',
-  RESULT_SET: 'Score saisi',
-  RESULT_DELETED: 'Score supprimé',
-  PLAYER_REPLACED: 'Joueur remplacé',
-  RELAY_TAKEN: 'Main prise',
-  RELAY_RECLAIMED: 'Main reprise par le super admin',
-  RELAY_RELEASED: 'Main rendue',
-  RELAY_OFFERED: 'Relais proposé',
-  RELAY_ACCEPTED: 'Relais accepté',
-  RELAY_DECLINED: 'Relais refusé',
-  RELAY_CANCELED: 'Proposition de relais annulée',
-};
+const EVENT_TYPES = [
+  'TOURNAMENT_CREATED',
+  'TOURNAMENT_UPDATED',
+  'PLAYER_REGISTERED',
+  'PLAYER_WITHDREW',
+  'PLAYER_ADDED',
+  'PLAYER_ACCEPTED',
+  'PLAYER_PROMOTED',
+  'PLAYER_REMOVED',
+  'PRESENCE_SET',
+  'DRAW_DONE',
+  'RESULT_SET',
+  'RESULT_DELETED',
+  'PLAYER_REPLACED',
+  'RELAY_TAKEN',
+  'RELAY_RECLAIMED',
+  'RELAY_RELEASED',
+  'RELAY_OFFERED',
+  'RELAY_ACCEPTED',
+  'RELAY_DECLINED',
+  'RELAY_CANCELED',
+] as const;
 
 /** Texte d'un événement du journal ; un type inconnu s'affiche tel quel (jamais d'erreur). */
-export const eventLabel = (type: string): string => EVENT_LABEL[type] ?? type;
+export function eventLabel(type: string, t: I18n['t']): string {
+  return (EVENT_TYPES as readonly string[]).includes(type)
+    ? t(`event.${type as (typeof EVENT_TYPES)[number]}`)
+    : type;
+}
 
-export const SECURITY_EVENT_LABEL: Record<SecurityEventType, string> = {
-  LOGIN_OK: 'Connexion réussie',
-  LOGIN_FAILED: 'Mot de passe incorrect',
-  MFA_FAILED: 'Code de double authentification incorrect',
-  ACCOUNT_LOCKED: 'Compte bloqué après trop d’essais',
-  MFA_ENABLED: 'Double authentification activée',
-  RECOVERY_USED: 'Code de secours utilisé',
-  RECOVERY_REGENERATED: 'Nouveaux codes de secours générés',
-  PASSWORD_CHANGED: 'Mot de passe changé',
-  PASSWORD_RESET: 'Mot de passe changé avec un lien de réinitialisation',
-  RESET_LINK_ISSUED: 'Lien de réinitialisation émis pour ce compte',
-  SESSIONS_REVOKED: 'Sessions fermées',
-  CREATOR_INVITED: 'Super admin invité',
+export const SECURITY_EVENT_KEY: Record<SecurityEventType, MessageKey> = {
+  LOGIN_OK: 'security.event.LOGIN_OK',
+  LOGIN_FAILED: 'security.event.LOGIN_FAILED',
+  MFA_FAILED: 'security.event.MFA_FAILED',
+  ACCOUNT_LOCKED: 'security.event.ACCOUNT_LOCKED',
+  MFA_ENABLED: 'security.event.MFA_ENABLED',
+  RECOVERY_USED: 'security.event.RECOVERY_USED',
+  RECOVERY_REGENERATED: 'security.event.RECOVERY_REGENERATED',
+  PASSWORD_CHANGED: 'security.event.PASSWORD_CHANGED',
+  PASSWORD_RESET: 'security.event.PASSWORD_RESET',
+  RESET_LINK_ISSUED: 'security.event.RESET_LINK_ISSUED',
+  SESSIONS_REVOKED: 'security.event.SESSIONS_REVOKED',
+  CREATOR_INVITED: 'security.event.CREATOR_INVITED',
 };
 
 /** Événements à regarder de près : si ce n'est pas toi, change ton mot de passe et ferme les sessions. */
@@ -112,3 +120,15 @@ export const SECURITY_EVENT_ALERT: ReadonlySet<SecurityEventType> = new Set([
   'RECOVERY_USED',
   'RESET_LINK_ISSUED',
 ]);
+
+/**
+ * Nom d'un tour d'élimination : Finale, Demi-finales, Quarts de finale, sinon « Tour n ». Même règle
+ * que le moteur (`bracketRoundName`), dans la langue de l'écran.
+ */
+export function roundName(round: number, totalRounds: number, t: I18n['t']): string {
+  const fromEnd = totalRounds - round;
+  if (fromEnd === 0) return t('round.final');
+  if (fromEnd === 1) return t('round.semi');
+  if (fromEnd === 2) return t('round.quarter');
+  return t('round.n', { n: round });
+}

@@ -6,10 +6,12 @@ import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { useCurrentGroup } from '../groups/current';
+import { useI18n } from '../lib/i18n';
 
 /** Un super admin crée un groupe : il en devient le super admin et y invitera ses admins. */
 export function NewGroup() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { select } = useCurrentGroup();
   const navigate = useNavigate();
   const create = useCreateGroup();
@@ -31,20 +33,20 @@ export function NewGroup() {
   return (
     <>
       <header className="topbar">
-        <Link className="icon-btn flat" to="/groupe" aria-label="Retour">
+        <Link className="icon-btn flat" to="/groupe" aria-label={t('common.back')}>
           <Icon name="back" size={24} />
         </Link>
-        <h1 className="title">Nouveau groupe</h1>
+        <h1 className="title">{t('group.newTitle')}</h1>
       </header>
       <form className="page" onSubmit={submit}>
         <div className="field">
-          <label htmlFor="group-name">Nom du groupe</label>
+          <label htmlFor="group-name">{t('group.name')}</label>
           <input
             id="group-name"
             className="input"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex. Les Stratèges"
+            placeholder={t('group.namePlaceholder')}
             maxLength={60}
             required
           />
@@ -56,11 +58,9 @@ export function NewGroup() {
           type="submit"
           disabled={create.isPending || name.trim().length < 2}
         >
-          Créer le groupe
+          {t('group.submit')}
         </button>
-        <p className="hint">
-          Tu en seras le super admin : tu pourras inviter les admins qui géreront les tournois.
-        </p>
+        <p className="hint">{t('group.superHint')}</p>
       </form>
     </>
   );

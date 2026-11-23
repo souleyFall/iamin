@@ -1,23 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { SecurityEvent, SessionInfo } from '../api/types';
-import { SECURITY_EVENT_ALERT, SECURITY_EVENT_LABEL } from '../lib/labels';
+import { useI18n } from '../lib/i18n';
+import { SECURITY_EVENT_ALERT, SECURITY_EVENT_KEY } from '../lib/labels';
 import { ConfirmButton } from './ConfirmButton';
 import { ErrorNote } from './ErrorNote';
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const SHORT_DATE: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+};
 
 const SESSIONS = ['security', 'sessions'] as const;
 const ACTIVITY = ['security', 'activity'] as const;
 
 /** Mes sessions ouvertes : repérer celle qui n'est pas la mienne et la fermer. */
 export function SessionsPanel() {
+  const { t, date } = useI18n();
   const client = useQueryClient();
   const sessions = useQuery({
     queryKey: SESSIONS,
@@ -40,25 +41,29 @@ export function SessionsPanel() {
   return (
     <section className="panel" aria-labelledby="sessions-title">
       <h2 id="sessions-title" className="section-title">
-        Sessions ouvertes
+        {t('sec.sessions.title')}
       </h2>
-      <p className="hint">
-        Une session que tu ne reconnais pas ? Ferme-la, puis change ton mot de passe.
-      </p>
+      <p className="hint">{t('sec.sessions.hint')}</p>
       <ErrorNote error={sessions.error ?? close.error ?? closeOthers.error} />
       <ul className="rows">
         {(sessions.data ?? []).map((s) => (
           <li key={s.id} className="player-row" style={{ flexWrap: 'wrap' }}>
             <span className="player-name">
-              {s.device ?? 'Appareil inconnu'}{' '}
-              {s.current && <span className="tag tag-ok">CETTE SESSION</span>}
+              {s.device ?? t('sec.sessions.unknownDevice')}{' '}
+              {s.current && <span className="tag tag-ok">{t('sec.sessions.current')}</span>}
             </span>
             <span className="muted" style={{ fontSize: 13 }}>
-              Active {when(s.lastSeenAt)} · ouverte {when(s.createdAt)}
+              {t('sec.sessions.times', {
+                last: date(s.lastSeenAt, SHORT_DATE),
+                created: date(s.createdAt, SHORT_DATE),
+              })}
             </span>
             {!s.current && (
-              <ConfirmButton confirmLabel="Fermer la session" onConfirm={() => close.mutate(s.id)}>
-                Fermer
+              <ConfirmButton
+                confirmLabel={t('sec.sessions.closeConfirm')}
+                onConfirm={() => close.mutate(s.id)}
+              >
+                {t('sec.sessions.close')}
               </ConfirmButton>
             )}
           </li>
@@ -66,11 +71,11 @@ export function SessionsPanel() {
       </ul>
       {others.length > 0 && (
         <ConfirmButton
-          confirmLabel="Fermer toutes les autres"
+          confirmLabel={t('sec.sessions.closeOthersConfirm')}
           className="btn"
           onConfirm={() => closeOthers.mutate()}
         >
-          Fermer toutes les autres sessions
+          {t('sec.sessions.closeOthers')}
         </ConfirmButton>
       )}
     </section>
@@ -79,6 +84,7 @@ export function SessionsPanel() {
 
 /** Journal de sécurité du compte (30 jours) : connexions, échecs, liens émis, codes de secours… */
 export function ActivityPanel() {
+  const { t, date } = useI18n();
   const activity = useQuery({
     queryKey: ACTIVITY,
     queryFn: () => api<SecurityEvent[]>('GET', '/auth/activity'),
@@ -86,23 +92,22 @@ export function ActivityPanel() {
   return (
     <section className="panel" aria-labelledby="activity-title">
       <h2 id="activity-title" className="section-title">
-        Activité récente
+        {t('sec.activity.title')}
       </h2>
-      <p className="hint">
-        Les 30 derniers jours. Ni adresse IP ni détail de ton navigateur : seulement le type
-        d’appareil.
-      </p>
+      <p className="hint">{t('sec.activity.hint')}</p>
       <ErrorNote error={activity.error} />
-      {activity.data?.length === 0 && <p className="muted">Rien à signaler.</p>}
+      {activity.data?.length === 0 && <p className="muted">{t('sec.activity.none')}</p>}
       <ul className="rows">
         {(activity.data ?? []).map((e) => (
           <li key={e.id} className="player-row" style={{ flexWrap: 'wrap' }}>
             <span className="player-name">
-              {SECURITY_EVENT_ALERT.has(e.type) && <span className="tag tag-bad">À VÉRIFIER</span>}{' '}
-              {SECURITY_EVENT_LABEL[e.type]}
+              {SECURITY_EVENT_ALERT.has(e.type) && (
+                <span className="tag tag-bad">{t('sec.activity.check')}</span>
+              )}{' '}
+              {t(SECURITY_EVENT_KEY[e.type])}
             </span>
             <span className="muted" style={{ fontSize: 13 }}>
-              {when(e.createdAt)}
+              {date(e.createdAt, SHORT_DATE)}
               {e.device ? ` · ${e.device}` : ''}
             </span>
           </li>

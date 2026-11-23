@@ -6,6 +6,7 @@ import { defaultRound, MatchContent, RoundTabs, roundsOf, type Line } from '../c
 import { ScoreSheet } from '../components/ScoreSheet';
 import { StandingsTable } from '../components/StandingsTable';
 import { namesOf } from '../lib/chat';
+import { useI18n } from '../lib/i18n';
 import { useTournamentCtx } from './tournament-context';
 
 /**
@@ -14,6 +15,7 @@ import { useTournamentCtx } from './tournament-context';
  */
 function Replacement() {
   const { tournament, draw, act } = useTournamentCtx();
+  const { t } = useI18n();
   const [outId, setOutId] = useState('');
   const [inId, setInId] = useState('');
   if (!draw) return null;
@@ -25,10 +27,10 @@ function Replacement() {
   if (outs.length === 0 || ins.length === 0) return null;
   return (
     <details className="panel fold desk-b">
-      <summary className="section-title">Remplacer un joueur</summary>
+      <summary className="section-title">{t('replace.title')}</summary>
       <div className="field">
         <label htmlFor="replace-out" style={{ fontSize: 16 }}>
-          Joueur absent
+          {t('replace.absent')}
         </label>
         <select
           id="replace-out"
@@ -37,7 +39,7 @@ function Replacement() {
           value={outId}
           onChange={(e) => setOutId(e.target.value)}
         >
-          <option value="">Choisir</option>
+          <option value="">{t('replace.choose')}</option>
           {outs.map((r) => (
             <option key={r.id} value={r.id}>
               {r.platoName}
@@ -47,7 +49,7 @@ function Replacement() {
       </div>
       <div className="field">
         <label htmlFor="replace-in" style={{ fontSize: 16 }}>
-          Remplaçant
+          {t('replace.substitute')}
         </label>
         <select
           id="replace-in"
@@ -56,11 +58,11 @@ function Replacement() {
           value={inId}
           onChange={(e) => setInId(e.target.value)}
         >
-          <option value="">Choisir</option>
+          <option value="">{t('replace.choose')}</option>
           {ins.map((r) => (
             <option key={r.id} value={r.id}>
               {r.platoName}
-              {r.status === 'WAITLIST' ? ' (liste d’attente)' : ''}
+              {r.status === 'WAITLIST' ? t('replace.waitlist') : ''}
             </option>
           ))}
         </select>
@@ -81,7 +83,7 @@ function Replacement() {
           )
         }
       >
-        Remplacer
+        {t('replace.submit')}
       </button>
     </details>
   );
@@ -89,6 +91,7 @@ function Replacement() {
 
 export function Play() {
   const { tournament, draw, isHolder, act } = useTournamentCtx();
+  const { t } = useI18n();
   const [picked, setPicked] = useState<number | null>(null);
   const [editing, setEditing] = useState<Line | null>(null);
 
@@ -96,7 +99,8 @@ export function Play() {
     return (
       <div className="page" style={{ paddingTop: 12 }}>
         <p className="card">
-          Le tirage n’est pas fait. <Link to="../tirage">Va à l’onglet Tirage.</Link>
+          {t('play.notDrawn')}
+          <Link to="../tirage">{t('play.goToDraw')}</Link>
         </p>
       </div>
     );
@@ -104,13 +108,13 @@ export function Play() {
   if (!draw)
     return (
       <p className="page muted" role="status">
-        Chargement…
+        {t('common.loading')}
       </p>
     );
 
   const names = namesOf(draw, tournament);
-  const nameOf = (id: string | null) => (id === null ? 'à déterminer' : (names[id] ?? id));
-  const rounds = roundsOf(draw);
+  const nameOf = (id: string | null) => (id === null ? t('match.tbd') : (names[id] ?? id));
+  const rounds = roundsOf(draw, t);
   const index = Math.min(picked ?? defaultRound(rounds), rounds.length - 1);
   const round = rounds[index];
   if (!round) return null;
@@ -130,11 +134,11 @@ export function Play() {
       <div className="page page-wide desk-grid" style={{ paddingTop: 8 }}>
         <div className="desk-main">
           {isBracketView(draw) && draw.champion && (
-            <p className="card notice notice-ok">Vainqueur du tournoi : {nameOf(draw.champion)}</p>
+            <p className="card notice notice-ok">
+              {t('play.champion', { name: nameOf(draw.champion) })}
+            </p>
           )}
-          {!isHolder && (
-            <p className="hint">Lecture seule : prends la main pour saisir les scores.</p>
-          )}
+          {!isHolder && <p className="hint">{t('play.readOnly')}</p>}
           <ul className="match-list">
             {round.lines.map((l, i) => {
               const editable = isHolder && (l.state === 'ready' || l.state === 'done');
@@ -145,7 +149,7 @@ export function Play() {
                     <button
                       type="button"
                       className="match"
-                      aria-label={`Saisir le score du match ${i + 1}`}
+                      aria-label={t('match.enterScore', { n: i + 1 })}
                       onClick={() => setEditing(l)}
                     >
                       {content}
@@ -157,7 +161,7 @@ export function Play() {
               );
             })}
           </ul>
-          {round.rest && <p className="muted">Repos : {nameOf(round.rest)}</p>}
+          {round.rest && <p className="muted">{t('play.rest', { name: nameOf(round.rest) })}</p>}
         </div>
         {!isBracketView(draw) && (
           <div className="desk-a">
@@ -170,7 +174,10 @@ export function Play() {
 
       {editing && (
         <ScoreSheet
-          title={`Match ${round.lines.findIndex((l) => l.code === editing.code) + 1} · ${round.label}`}
+          title={t('play.sheetTitle', {
+            n: round.lines.findIndex((l) => l.code === editing.code) + 1,
+            round: round.label,
+          })}
           nameA={nameOf(editing.a)}
           nameB={nameOf(editing.b)}
           initial={editing.score}

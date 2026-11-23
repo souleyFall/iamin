@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGroup } from '../api/queries';
 import { ErrorNote } from '../components/ErrorNote';
+import { useI18n } from '../lib/i18n';
 import type { TournamentCtx } from './tournament-context';
 
 /**
@@ -13,6 +14,7 @@ export function RelayBar({
   ctx: Pick<TournamentCtx, 'groupId' | 'groupRole' | 'tournament' | 'me' | 'isHolder' | 'act'>;
 }) {
   const { groupId, groupRole, tournament, me, isHolder, act } = ctx;
+  const { t } = useI18n();
   const group = useGroup(groupId);
   const [choosing, setChoosing] = useState(false);
   const [target, setTarget] = useState('');
@@ -25,17 +27,17 @@ export function RelayBar({
   let buttons: React.ReactNode = null;
 
   if (isHolder) {
-    status = <span className="tag tag-ok">TU AS LA MAIN</span>;
+    status = <span className="tag tag-ok">{t('relay.youHave')}</span>;
     buttons = handoverTo ? (
       <>
-        <span className="muted">Relais proposé à {handoverTo.username}</span>
+        <span className="muted">{t('relay.offeredTo', { name: handoverTo.username })}</span>
         <button
           className="btn btn-sm"
           type="button"
           disabled={busy}
           onClick={() => act.mutate({ method: 'DELETE', path: '/relay/offer' })}
         >
-          Annuler la proposition
+          {t('relay.cancelOffer')}
         </button>
       </>
     ) : (
@@ -46,7 +48,7 @@ export function RelayBar({
           disabled={busy || others.length === 0}
           onClick={() => setChoosing((v) => !v)}
         >
-          Passer le relais
+          {t('relay.pass')}
         </button>
         <button
           className="btn btn-sm"
@@ -54,12 +56,12 @@ export function RelayBar({
           disabled={busy}
           onClick={() => post('/relay/release')}
         >
-          Rendre la main
+          {t('relay.release')}
         </button>
       </>
     );
   } else if (handoverTo?.id === me.id) {
-    status = <span className="tag tag-live">RELAIS PROPOSÉ</span>;
+    status = <span className="tag tag-live">{t('relay.offeredBadge')}</span>;
     buttons = (
       <>
         <button
@@ -68,7 +70,7 @@ export function RelayBar({
           disabled={busy}
           onClick={() => post('/relay/accept')}
         >
-          Accepter
+          {t('relay.accept')}
         </button>
         <button
           className="btn btn-sm"
@@ -76,12 +78,12 @@ export function RelayBar({
           disabled={busy}
           onClick={() => post('/relay/decline')}
         >
-          Refuser
+          {t('relay.decline')}
         </button>
       </>
     );
   } else if (holder) {
-    status = <span className="tag">MAIN : {holder.username}</span>;
+    status = <span className="tag">{t('relay.heldBy', { name: holder.username })}</span>;
     if (groupRole === 'SUPER_ADMIN') {
       buttons = (
         <button
@@ -90,12 +92,12 @@ export function RelayBar({
           disabled={busy}
           onClick={() => post('/relay/take')}
         >
-          Reprendre la main
+          {t('relay.reclaim')}
         </button>
       );
     }
   } else {
-    status = <span className="tag">PERSONNE N’A LA MAIN</span>;
+    status = <span className="tag">{t('relay.nobody')}</span>;
     buttons = (
       <button
         className="btn btn-sm btn-primary"
@@ -103,13 +105,13 @@ export function RelayBar({
         disabled={busy}
         onClick={() => post('/relay/take')}
       >
-        Prendre la main
+        {t('relay.take')}
       </button>
     );
   }
 
   return (
-    <section className="card relay-bar" aria-label="La main sur ce tournoi">
+    <section className="card relay-bar" aria-label={t('relay.region')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {status}
         {buttons}
@@ -117,7 +119,7 @@ export function RelayBar({
       {isHolder && choosing && !handoverTo && (
         <div className="field">
           <label htmlFor="relay-target" style={{ fontSize: 16 }}>
-            Passer le relais à
+            {t('relay.passTo')}
           </label>
           <div className="actions">
             <select
@@ -127,7 +129,7 @@ export function RelayBar({
               value={target}
               onChange={(e) => setTarget(e.target.value)}
             >
-              <option value="">Choisir un admin</option>
+              <option value="">{t('relay.chooseAdmin')}</option>
               {others.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.username}
@@ -145,17 +147,13 @@ export function RelayBar({
                 setTarget('');
               }}
             >
-              Proposer
+              {t('relay.propose')}
             </button>
           </div>
-          <p className="hint">Rien ne change avant son accord.</p>
+          <p className="hint">{t('relay.nothingChanges')}</p>
         </div>
       )}
-      {!isHolder && (
-        <p className="hint">
-          Tu peux tout lire, mais seul l’admin qui tient la main peut modifier le tournoi.
-        </p>
-      )}
+      {!isHolder && <p className="hint">{t('relay.readOnly')}</p>}
       <ErrorNote error={act.error} />
     </section>
   );

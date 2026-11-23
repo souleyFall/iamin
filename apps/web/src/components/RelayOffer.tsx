@@ -1,5 +1,6 @@
 import { useAction } from '../api/queries';
 import type { TournamentSummary } from '../api/types';
+import { useI18n } from '../lib/i18n';
 import { ErrorNote } from './ErrorNote';
 
 /** « Sana te passe la main sur Dames #4 » : à accepter ou refuser depuis la liste des tournois. */
@@ -10,13 +11,15 @@ export function RelayOffer({
   groupId: string;
   tournament: TournamentSummary;
 }) {
+  const { t } = useI18n();
   const act = useAction(groupId, tournament.id);
   return (
-    <section className="card" aria-label={`Relais proposé sur ${tournament.name}`}>
+    <section className="card" aria-label={t('relay.offerRegion', { name: tournament.name })}>
       <p style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className="tag tag-live">RELAIS PROPOSÉ</span>
+        <span className="tag tag-live">{t('relay.offeredBadge')}</span>
         <span>
-          <b>{tournament.holder?.username ?? 'Un admin'}</b> te passe la main sur {tournament.name}
+          <b>{tournament.holder?.username ?? t('relay.anAdmin')}</b>{' '}
+          {t('relay.offerText', { tournament: tournament.name })}
         </span>
       </p>
       <div className="actions">
@@ -26,7 +29,7 @@ export function RelayOffer({
           disabled={act.isPending}
           onClick={() => act.mutate({ method: 'POST', path: '/relay/accept' })}
         >
-          Accepter
+          {t('relay.accept')}
         </button>
         <button
           type="button"
@@ -34,7 +37,7 @@ export function RelayOffer({
           disabled={act.isPending}
           onClick={() => act.mutate({ method: 'POST', path: '/relay/decline' })}
         >
-          Refuser
+          {t('relay.decline')}
         </button>
       </div>
       <ErrorNote error={act.error} />

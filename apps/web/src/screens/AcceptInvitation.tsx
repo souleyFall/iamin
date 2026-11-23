@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
+import { useI18n } from '../lib/i18n';
 
 /**
  * Page du lien d'invitation (`/invitation/<jeton>`). Sans compte : on en crée un. Connecté : on
@@ -13,6 +14,7 @@ import { ErrorNote } from '../components/ErrorNote';
 export function AcceptInvitation() {
   const { token = '' } = useParams();
   const { user, accept, refresh } = useAuth();
+  const { t } = useI18n();
   const client = useQueryClient();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -28,7 +30,7 @@ export function AcceptInvitation() {
       await action();
       void navigate('/', { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e : new Error('Invitation impossible.'));
+      setError(e instanceof Error ? e : new Error(t('invite.failed')));
     } finally {
       setBusy(false);
     }
@@ -64,7 +66,7 @@ export function AcceptInvitation() {
   if (user === undefined) {
     return (
       <p className="page muted" role="status">
-        Chargement…
+        {t('common.loading')}
       </p>
     );
   }
@@ -74,11 +76,8 @@ export function AcceptInvitation() {
       <div className="logo">i-am-in</div>
       {user ? (
         <section className="panel">
-          <h1 className="section-title">Invitation</h1>
-          <p>
-            Tu es connecté en tant que <b>{user.username}</b>. Utiliser cette invitation avec ce
-            compte ?
-          </p>
+          <h1 className="section-title">{t('invite.title')}</h1>
+          <p>{t('invite.loggedIn', { name: user.username })}</p>
           <ErrorNote error={error} />
           <button
             className="key key-wide"
@@ -86,21 +85,18 @@ export function AcceptInvitation() {
             disabled={busy}
             onClick={() => void join()}
           >
-            Utiliser l’invitation
+            {t('invite.use')}
           </button>
           <Link className="btn" to="/">
-            Retour
+            {t('common.back')}
           </Link>
         </section>
       ) : (
         <form className="panel" onSubmit={submit}>
-          <h1 className="section-title">Créer ton compte</h1>
-          <p className="hint">
-            Tu as reçu une invitation. Choisis un identifiant et un mot de passe (12 caractères au
-            moins).
-          </p>
+          <h1 className="section-title">{t('invite.createTitle')}</h1>
+          <p className="hint">{t('invite.createHint')}</p>
           <div className="field">
-            <label htmlFor="username">Identifiant</label>
+            <label htmlFor="username">{t('login.username')}</label>
             <input
               id="username"
               className="input"
@@ -114,7 +110,7 @@ export function AcceptInvitation() {
             {fieldError.username && <p className="error">{fieldError.username}</p>}
           </div>
           <div className="field">
-            <label htmlFor="plato">Pseudo Plato</label>
+            <label htmlFor="plato">{t('invite.plato')}</label>
             <input
               id="plato"
               className="input"
@@ -126,14 +122,12 @@ export function AcceptInvitation() {
               required
             />
             <p className="hint">
-              {lockedPseudo !== null
-                ? 'Ce lien est réservé à ce pseudo Plato : il ne se modifie pas.'
-                : 'Il sert à vérifier ton identité si tu perds ton mot de passe.'}
+              {lockedPseudo !== null ? t('invite.platoLocked') : t('invite.platoFree')}
             </p>
             {fieldError.platoUsername && <p className="error">{fieldError.platoUsername}</p>}
           </div>
           <div className="field">
-            <label htmlFor="password">Mot de passe</label>
+            <label htmlFor="password">{t('login.password')}</label>
             <input
               id="password"
               className="input"
@@ -150,14 +144,16 @@ export function AcceptInvitation() {
             error={Object.keys(fieldError).length === 0 ? (error ?? preview.error) : null}
           />
           <button className="key key-wide" type="submit" disabled={busy}>
-            Créer mon compte
+            {t('invite.create')}
           </button>
           <p className="hint">
-            Tu as déjà un compte ? <Link to="/connexion">Connecte-toi</Link>, puis rouvre ce lien.
+            {t('invite.hasAccount')}
+            <Link to="/connexion">{t('invite.signInLink')}</Link>
+            {t('invite.reopen')}
           </p>
         </form>
       )}
-      <p className="notice-standalone">i-am-in est un outil indépendant, non affilié à Plato.</p>
+      <p className="notice-standalone">{t('common.disclaimer')}</p>
     </main>
   );
 }

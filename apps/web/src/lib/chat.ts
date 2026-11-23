@@ -1,5 +1,4 @@
 import {
-  bracketRoundName,
   formatBracketResults,
   formatBracketRound,
   formatLeagueResults,
@@ -11,6 +10,8 @@ import {
   type ResolvedBracket,
 } from '@iamin/engine';
 import { isBracketView, type DrawView, type Tournament } from '../api/types';
+import type { I18n } from './i18n';
+import { roundName } from './labels';
 
 export interface ChatChoice {
   key: string;
@@ -28,21 +29,26 @@ export function namesOf(draw: DrawView | undefined, t: Tournament): Names {
 
 /**
  * Les messages que l'admin peut copier dans le chat Plato. Le texte vient du moteur
- * (`@iamin/engine`) : pseudos nettoyés, une information par ligne, texte brut.
+ * (`@iamin/engine`) : pseudos nettoyés, une information par ligne, texte brut. Les noms du menu
+ * suivent la langue de l'écran.
  */
-export function chatChoices(t: Tournament, draw: DrawView | undefined): ChatChoice[] {
-  const names = namesOf(draw, t);
+export function chatChoices(
+  tournament: Tournament,
+  draw: DrawView | undefined,
+  t: I18n['t'],
+): ChatChoice[] {
+  const names = namesOf(draw, tournament);
   const byStatus = (s: string) =>
-    t.registrations.filter((r) => r.status === s).map((r) => r.platoName);
+    tournament.registrations.filter((r) => r.status === s).map((r) => r.platoName);
   const choices: ChatChoice[] = [
     {
       key: 'registrations',
-      label: 'Liste des inscrits',
+      label: t('chat.registrations'),
       text: formatRegistrations({
-        title: t.name,
+        title: tournament.name,
         accepted: byStatus('ACCEPTED'),
         waitlist: byStatus('WAITLIST'),
-        capacity: t.capacity,
+        capacity: tournament.capacity,
       }),
     },
   ];
@@ -52,16 +58,16 @@ export function chatChoices(t: Tournament, draw: DrawView | undefined): ChatChoi
     const resolved: ResolvedBracket = { rounds: draw.bracket.rounds, champion: draw.champion };
     const total = resolved.rounds.length;
     for (let round = 1; round <= total; round += 1) {
-      const name = bracketRoundName(round, total);
+      const name = roundName(round, total, t);
       choices.push({
         key: `vs-${round}`,
-        label: `${name} : VS`,
-        text: formatBracketRound(resolved, round, names, t.name),
+        label: t('chat.vs', { name }),
+        text: formatBracketRound(resolved, round, names, tournament.name),
       });
       choices.push({
         key: `results-${round}`,
-        label: `${name} : résultats`,
-        text: formatBracketResults(resolved, round, names, t.name),
+        label: t('chat.results', { name }),
+        text: formatBracketResults(resolved, round, names, tournament.name),
       });
     }
     return choices;
@@ -75,21 +81,22 @@ export function chatChoices(t: Tournament, draw: DrawView | undefined): ChatChoi
     rests: draw.schedule.rests,
   };
   for (let round = 1; round <= league.rounds.length; round += 1) {
+    const name = t('chat.round', { n: round });
     choices.push({
       key: `vs-${round}`,
-      label: `Journée ${round} : VS`,
-      text: formatLeagueRound(league, round, names, t.name),
+      label: t('chat.vs', { name }),
+      text: formatLeagueRound(league, round, names, tournament.name),
     });
     choices.push({
       key: `results-${round}`,
-      label: `Journée ${round} : résultats`,
-      text: formatLeagueResults(league, draw.scores, round, names, t.name),
+      label: t('chat.results', { name }),
+      text: formatLeagueResults(league, draw.scores, round, names, tournament.name),
     });
   }
   choices.push({
     key: 'standings',
-    label: 'Classement',
-    text: formatStandings(draw.standings, names, t.name),
+    label: t('chat.standings'),
+    text: formatStandings(draw.standings, names, tournament.name),
   });
   return choices;
 }

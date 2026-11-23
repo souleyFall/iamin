@@ -1,4 +1,5 @@
 import type { Standings } from '../api/types';
+import { useI18n } from '../lib/i18n';
 
 /** Classement d'une ligue. Partagé par l'écran admin et la page publique. */
 export function StandingsTable({
@@ -8,19 +9,20 @@ export function StandingsTable({
   standings: Standings;
   nameOf: (id: string | null) => string;
 }) {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="standings">
       <h2 id="standings" className="section-title">
-        Classement ({standings.played}/{standings.total})
+        {t('standings.title', { played: standings.played, total: standings.total })}
       </h2>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
         <thead>
           <tr className="muted" style={{ textAlign: 'left', fontSize: 13 }}>
             <th scope="col">#</th>
-            <th scope="col">Joueur</th>
-            <th scope="col">Pts</th>
-            <th scope="col">V-D</th>
-            <th scope="col">Diff</th>
+            <th scope="col">{t('standings.player')}</th>
+            <th scope="col">{t('standings.points')}</th>
+            <th scope="col">{t('standings.record')}</th>
+            <th scope="col">{t('standings.diff')}</th>
           </tr>
         </thead>
         <tbody>
