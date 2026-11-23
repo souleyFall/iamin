@@ -58,6 +58,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     sessionCookieSecure: false,
     trustProxy: 0,
     totpEncryptionKey: TEST_TOTP_KEY,
+    logLevel: 'silent',
     ...overrides,
   };
   const moduleRef = await Test.createTestingModule({

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import type { LogLevelSetting } from './logging/app-logger';
 
 /**
  * Configuration lue dans l'environnement et validée au démarrage : une variable manquante ou
@@ -35,6 +36,8 @@ const schema = z.object({
     .string()
     .regex(/^[0-9a-fA-F]{64}$/, 'doit faire 64 caractères hexadécimaux (openssl rand -hex 32)')
     .optional(),
+  // Niveau minimal du journal. Par défaut : « info » (« silent » en test, pour des tests lisibles).
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).optional(),
 });
 
 /** Clé de repli hors production : connue de tous, donc sans aucune valeur de protection. */
@@ -49,6 +52,8 @@ export interface AppConfig {
   trustProxy: number;
   /** Clé AES-256 des secrets de double authentification. */
   totpEncryptionKey: Buffer;
+  /** Niveau minimal du journal (voir logging/app-logger.ts). */
+  logLevel: LogLevelSetting;
 }
 
 export class ConfigError extends Error {
@@ -88,5 +93,6 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): A
     totpEncryptionKey: c.TOTP_ENCRYPTION_KEY
       ? Buffer.from(c.TOTP_ENCRYPTION_KEY, 'hex')
       : DEV_TOTP_KEY,
+    logLevel: c.LOG_LEVEL ?? (c.NODE_ENV === 'test' ? 'silent' : 'info'),
   };
 }

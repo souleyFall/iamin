@@ -1,5 +1,6 @@
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import type { SecurityEventType } from '@prisma/client';
+import { describeError, logger } from '../logging/app-logger';
 import { PrismaService } from '../prisma.service';
 
 /** Le journal de sécurité d'un compte est gardé 30 jours (registre RGPD, traitement 1). */
@@ -21,7 +22,18 @@ export class SecurityService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   onModuleInit(): void {
-    this.timer = setInterval(() => void this.purge().catch(() => undefined), PURGE_EVERY_MS);
+    this.timer = setInterval(() => {
+      this.purge()
+        .then((count) => {
+          if (count > 0) logger.event('security.purge', { count }, 'info', 'Security');
+        })
+        .catch((error: unknown) =>
+          logger.write('error', 'Security', 'Purge du journal de sécurité en échec', {
+            event: 'security.purge_failed',
+            ...describeError(error),
+          }),
+        );
+    }, PURGE_EVERY_MS);
     this.timer.unref();
   }
 
@@ -31,10 +43,22 @@ export class SecurityService implements OnModuleInit, OnModuleDestroy {
 
   /** Écrire dans le journal ne doit jamais empêcher l'action qu'il décrit : une erreur est avalée. */
   async record(userId: string, type: SecurityEventType, device?: string | null): Promise<void> {
+    // Le même événement part aussi au journal technique (sans appareil), pour retrouver une
+    // attaque ou un incident d'un coup d'œil : `--event security.account_locked`.
+    logger.event(
+      `security.${type.toLowerCase()}`,
+      { subject: userId },
+      type === 'ACCOUNT_LOCKED' || type.endsWith('_FAILED') ? 'warn' : 'info',
+      'Security',
+    );
     try {
       await this.prisma.securityEvent.create({ data: { userId, type, device: device ?? null } });
-    } catch {
-      // Journal indisponible : la connexion, elle, doit continuer.
+    } catch (error) {
+      // Journal indisponible : la connexion, elle, doit continuer, mais on le sait.
+      logger.write('error', 'Security', 'Écriture du journal de sécurité impossible', {
+        event: 'security.journal_unavailable',
+        ...describeError(error),
+      });
     }
   }
 
@@ -51,8 +75,11 @@ export class SecurityService implements OnModuleInit, OnModuleDestroy {
         select: { id: true },
       });
       if (!recent) await this.record(userId, type, device);
-    } catch {
-      // idem
+    } catch (error) {
+      logger.write('error', 'Security', 'Lecture du journal de sécurité impossible', {
+        event: 'security.journal_unavailable',
+        ...describeError(error),
+      });
     }
   }
 

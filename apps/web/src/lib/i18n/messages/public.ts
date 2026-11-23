@@ -108,6 +108,14 @@ export const publicPage = defineMessages({
     'The server answered with an error.',
     'El servidor respondió con un error.',
   ],
+  'err.ref': ['réf.', 'ref.', 'ref.'],
+  'err.crash.title': ['Quelque chose s’est cassé.', 'Something broke.', 'Algo se ha roto.'],
+  'err.crash.body': [
+    'L’erreur a été signalée. Recharge la page pour continuer.',
+    'The error was reported. Reload the page to continue.',
+    'El error se ha notificado. Recarga la página para continuar.',
+  ],
+  'err.crash.reload': ['Recharger', 'Reload', 'Recargar'],
   'err.network': [
     'Serveur injoignable. Vérifie ta connexion.',
     'Server unreachable. Check your connection.',

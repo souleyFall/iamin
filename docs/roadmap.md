@@ -30,6 +30,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 22  | `feat(i18n)` : interface en français, anglais et espagnol                          | fusionnée |
 | 23  | `feat(i18n)` : langue du tournoi, page des joueurs et texte du chat                | fusionnée |
 | 24  | `feat(i18n)` : messages d'erreur de l'API en trois langues                         | fusionnée |
+| 25  | `feat(logs)` : journal structuré, identifiant de requête, erreurs du navigateur    | fusionnée |
 
 ## Après
 

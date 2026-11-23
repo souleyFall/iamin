@@ -11,12 +11,15 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/session';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { I18nProvider } from './lib/i18n';
+import { installErrorReporting } from './lib/report-error';
 import { applyTheme, initialTheme } from './lib/theme';
 import './styles/tokens.css';
 import './styles/app.css';
 
 applyTheme(initialTheme());
+installErrorReporting();
 
 const client = new QueryClient({
   defaultOptions: {
@@ -44,11 +47,13 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={client}>
       <I18nProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </BrowserRouter>
+        </ErrorBoundary>
       </I18nProvider>
     </QueryClientProvider>
   </StrictMode>,

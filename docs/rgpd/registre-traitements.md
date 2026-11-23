@@ -76,7 +76,19 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | Minimisation | Les joueurs écrivent sans compte et anonymement ; le message libre peut contenir des données personnelles que la personne y met : l'écran le rappelle, et la suppression à la demande est possible (le propriétaire efface la ligne) |
 | Droits       | Un joueur anonyme ne peut pas être retrouvé s'il n'a pas laissé de pseudo ; s'il en a laissé un, il demande la suppression au propriétaire. À la suppression d'un compte admin, ses retours restent mais n'ont plus d'auteur         |
 
+## Traitement 7 : journal technique de l'API
+
+|              |                                                                                                                                                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Finalité     | Comprendre et corriger les pannes, bugs et abus (erreurs, refus, événements de sécurité) ; retrouver ce qui s'est passé à partir de la référence affichée à l'écran                                                                                                  |
+| Données      | Pour chaque requête : heure, méthode, route (le modèle `/groups/:groupId`, jamais l'adresse réelle), statut, durée, identifiant de requête, rôle, identifiant du compte connecté (pseudonyme : un uuid, jamais le nom). Pour une erreur : nom, code, trace technique |
+| Exclu        | Adresse IP, agent utilisateur, en-têtes, cookies, mots de passe, jetons, corps des requêtes, valeurs des requêtes à la base, paramètres d'adresse, pseudos Plato (champs dont le nom évoque un secret masqués d'office)                                              |
+| Base légale  | Intérêt légitime (sécurité et fiabilité du service)                                                                                                                                                                                                                  |
+| Accès        | L'administrateur du serveur seulement (`docker compose logs`) ; aucun écran ne les affiche                                                                                                                                                                           |
+| Conservation | Rotation par taille : 5 fichiers de 20 Mo par conteneur, soit de quelques jours à quelques semaines selon le trafic ; rien n'est exporté vers un tiers                                                                                                               |
+| Droits       | L'identifiant de compte est un uuid : sans la base il ne désigne personne. À la suppression d'un compte, ses anciennes lignes ne sont plus rattachables à une personne et s'effacent avec la rotation                                                                |
+
 ## Hors dépôt
 
 - **Journaux d'accès du serveur web** : désactivés. Caddy n'écrit que ses erreurs (`deploy/Caddyfile`), donc aucune adresse IP n'est conservée. L'API ne voit l'adresse qu'en mémoire, pour limiter le débit (D21).
-- **Journaux des conteneurs** : rotation par taille (3 fichiers de 10 Mo), sans donnée de requête.
+- **Journaux des conteneurs** : rotation par taille (5 fichiers de 20 Mo). Celui de l'API est le journal technique du traitement 7 ; celui de Caddy ne contient que ses erreurs.

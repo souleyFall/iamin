@@ -58,6 +58,7 @@ export const CATALOG: readonly Entry[] = [
     'La contraseña actual es incorrecta',
   ],
   ['Données invalides', 'Invalid data', 'Datos no válidos'],
+  ['Erreur interne du serveur', 'Internal server error', 'Error interno del servidor'],
   ['Session introuvable', 'Session not found', 'Sesión no encontrada'],
   [
     'Lien de réinitialisation invalide ou expiré',

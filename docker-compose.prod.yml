@@ -13,8 +13,8 @@ name: iamin-prod
 x-logging: &logging
   driver: json-file
   options:
-    max-size: '10m'
-    max-file: '3'
+    max-size: '20m'
+    max-file: '5'
 
 services:
   db:
@@ -64,6 +64,8 @@ services:
       SESSION_COOKIE_SECURE: 'true'
       # Un seul proxy (Caddy) devant l'API : les limites de débit voient la vraie adresse du visiteur.
       TRUST_PROXY: '1'
+      # Journal : « info » par défaut ; « debug » pour creuser, « warn » pour ne garder que les problèmes.
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       # Chiffre les secrets de double authentification en base. Perdue, elle rend tous les codes
       # inutilisables (réinitialisation par la ligne de commande) : à garder avec les sauvegardes.
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?définis TOTP_ENCRYPTION_KEY dans .env.prod (openssl rand -hex 32)}
