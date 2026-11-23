@@ -94,8 +94,19 @@ function build(locale: Locale, setLocale: (l: Locale) => void): I18n {
 }
 
 /** Langue en cours, lisible hors de React (messages d'erreur du client de l'API). */
+/**
+ * Un fournisseur par profondeur (celui de l'application, puis celui d'une page publique posé dedans) :
+ * la langue en cours est celle du plus profond. Les effets d'un fournisseur interne passent AVANT ceux
+ * de l'externe : sans cette règle, l'externe écraserait la langue du tournoi à l'ouverture de la page.
+ */
+const scopes = new Map<number, Locale>();
 let current: Locale = DEFAULT_LOCALE;
+function settle(): void {
+  const deepest = Math.max(-1, ...scopes.keys());
+  current = scopes.get(deepest) ?? DEFAULT_LOCALE;
+}
 export const activeLocale = (): Locale => current;
+const DepthContext = createContext(0);
 
 /** Sans fournisseur (tests, composants isolés) : le français, la langue de départ du projet. */
 const FALLBACK = build(DEFAULT_LOCALE, () => undefined);
@@ -112,6 +123,7 @@ export function I18nProvider({
   children: ReactNode;
   defaultLocale?: Locale;
 }) {
+  const depth = useContext(DepthContext);
   const [chosen, setChosen] = useState<Locale | null>(() => {
     const saved = readPref(STORAGE_KEY);
     return isLocale(saved) ? saved : null;
@@ -128,12 +140,22 @@ export function I18nProvider({
   }, []);
 
   useEffect(() => {
-    current = locale;
-    document.documentElement.lang = locale;
-  }, [locale]);
+    scopes.set(depth, locale);
+    settle();
+    document.documentElement.lang = current;
+    return () => {
+      scopes.delete(depth);
+      settle();
+      document.documentElement.lang = current;
+    };
+  }, [depth, locale]);
 
   const value = useMemo(() => build(locale, setLocale), [locale, setLocale]);
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+    <DepthContext.Provider value={depth + 1}>
+      <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+    </DepthContext.Provider>
+  );
 }
 
 export function useI18n(): I18n {

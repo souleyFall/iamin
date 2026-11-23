@@ -1,5 +1,5 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
@@ -23,6 +23,7 @@ import { APP_CONFIG } from './config.token';
 import { FeedbackController, PublicFeedbackController } from './feedback/feedback.controller';
 import { FeedbackService } from './feedback/feedback.service';
 import { HealthController } from './health.controller';
+import { LocalizedExceptionFilter } from './i18n/localized-exception.filter';
 import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
@@ -85,6 +86,8 @@ export class AppModule {
         RelayService,
         LiveService,
         FeedbackService,
+        // Messages d'erreur dans la langue de la personne (Accept-Language), catalogue de D27.
+        { provide: APP_FILTER, useClass: LocalizedExceptionFilter },
         // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
         GroupGuard,
         // Ordre d'exécution : limite de débit, origine, session et CSRF, rôle, double authentification obligatoire du propriétaire, puis ressaisie du code.
