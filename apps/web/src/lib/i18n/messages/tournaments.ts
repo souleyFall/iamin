@@ -210,6 +210,19 @@ export const tournaments = defineMessages({
   ],
   'draw.do': ['Faire le tirage', 'Do the draw', 'Hacer el sorteo'],
 
+  // Langue du tournoi
+  'lang.label': ['Langue du tournoi', 'Tournament language', 'Idioma del torneo'],
+  'lang.hint': [
+    'Celle de la page des joueurs et des messages du chat. Chaque joueur peut changer de langue pour lui-même.',
+    'The language of the players’ page and of the chat messages. Each player can switch language for themselves.',
+    'La de la página de los jugadores y de los mensajes del chat. Cada jugador puede cambiar de idioma para sí mismo.',
+  ],
+  'copy.language': [
+    'Le message est écrit en {language}, la langue du tournoi.',
+    'The message is written in {language}, the tournament language.',
+    'El mensaje está escrito en {language}, el idioma del torneo.',
+  ],
+
   // Onglets d'un tournoi
   'tabs.label': ['Sections du tournoi', 'Tournament sections', 'Secciones del torneo'],
   'tabs.registrations': ['Inscrits', 'Players', 'Inscritos'],

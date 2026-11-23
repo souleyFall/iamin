@@ -28,6 +28,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 20  | `feat(auth)` : verrouillage par adresse, sessions actives, journal de sécurité     | fusionnée |
 | 21  | `feat(web)` : mise en page ordinateur (barre latérale, deux colonnes, cartes)      | fusionnée |
 | 22  | `feat(i18n)` : interface en français, anglais et espagnol                          | fusionnée |
+| 23  | `feat(i18n)` : langue du tournoi, page des joueurs et texte du chat                | fusionnée |
 
 ## Après
 

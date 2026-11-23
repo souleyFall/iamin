@@ -13,7 +13,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { GroupRole, Presence, TournamentFormat, TournamentStatus } from '@prisma/client';
+import {
+  GroupRole,
+  Presence,
+  TournamentFormat,
+  TournamentLanguage,
+  TournamentStatus,
+} from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth } from '../auth/auth.controller';
 import { Public } from '../auth/guards';
@@ -37,12 +43,14 @@ const createSchema = z.object({
   format: z.nativeEnum(TournamentFormat),
   capacity: capacitySchema,
   forfeitScore: z.number().int().min(1).max(99).optional(),
+  language: z.nativeEnum(TournamentLanguage).optional(),
 });
 const updateSchema = z
   .object({
     name: nameSchema.optional(),
     capacity: capacitySchema.optional(),
     forfeitScore: z.number().int().min(1).max(99).optional(),
+    language: z.nativeEnum(TournamentLanguage).optional(),
     // Le tirage (PR 9) fait passer en STARTED puis FINISHED : on ne les fixe pas à la main.
     status: z.enum([TournamentStatus.REGISTRATION, TournamentStatus.CHECK_IN]).optional(),
   })

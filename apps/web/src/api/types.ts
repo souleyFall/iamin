@@ -6,6 +6,8 @@ import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine
 export type Role = 'PLATFORM_OWNER' | 'GROUP_CREATOR' | 'MEMBER';
 export type GroupRole = 'SUPER_ADMIN' | 'ADMIN';
 export type TournamentFormat = 'ELIMINATION' | 'LEAGUE';
+/** Langue d'un tournoi : celle de la page des joueurs et du texte du chat (choisie par l'admin). */
+export type TournamentLanguage = 'fr' | 'en' | 'es';
 export type TournamentStatus = 'REGISTRATION' | 'CHECK_IN' | 'STARTED' | 'FINISHED';
 export type RegistrationStatus = 'PENDING' | 'ACCEPTED' | 'WAITLIST' | 'REPLACED';
 export type Presence = 'UNKNOWN' | 'PRESENT' | 'ABSENT';
@@ -149,6 +151,7 @@ export interface TournamentSummary {
   status: TournamentStatus;
   publicSlug: string;
   forfeitScore: number;
+  language: TournamentLanguage;
   createdAt: string;
   drawnAt: string | null;
   drawSeed: string | null;
@@ -207,6 +210,7 @@ export interface PublicHead {
   name: string;
   format: TournamentFormat;
   status: TournamentStatus;
+  language: TournamentLanguage;
   registrationOpen: boolean;
   revision: number;
 }

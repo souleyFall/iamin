@@ -8,7 +8,125 @@ import type { League, Standings } from './league';
  * sur mobile. Les pseudos viennent d'inscriptions publiques : ils sont nettoyés (retours à la
  * ligne et caractères de contrôle supprimés) pour qu'un pseudo ne puisse pas fausser le message
  * copié ni y glisser de fausses lignes.
+ *
+ * Langue : français par défaut ; anglais et espagnol avec le paramètre `locale`. Le texte est
+ * celui que les JOUEURS lisent dans le chat de leur serveur Plato : il suit la langue du tournoi,
+ * pas celle de l'écran de l'admin.
  */
+
+export type Locale = 'fr' | 'en' | 'es';
+export const LOCALES: readonly Locale[] = ['fr', 'en', 'es'];
+
+/** Les phrases du chat dans chaque langue. Les nombres et les noms sont insérés par les fonctions. */
+interface Phrases {
+  toBeDetermined: string;
+  registered: (n: number) => string;
+  places: (n: number, capacity: number) => string;
+  registrationsHeading: (places: string) => string;
+  noRegistered: string;
+  waitlist: (n: number) => string;
+  final: string;
+  semiFinals: string;
+  quarterFinals: string;
+  round: (n: number) => string;
+  bye: (player: string) => string;
+  matchday: (n: number, total: number) => string;
+  rest: (player: string) => string;
+  wins: (player: string) => string;
+  resultsRound: (round: string) => string;
+  resultsMatchday: (n: number, total: number) => string;
+  noResults: string;
+  champion: (player: string) => string;
+  standings: (state: string) => string;
+  standingsFinal: string;
+  standingsProgress: (played: number, total: number) => string;
+  standingsRow: (
+    rank: number,
+    player: string,
+    points: number,
+    wins: number,
+    losses: number,
+    diff: string,
+  ) => string;
+}
+
+const PHRASES: Record<Locale, Phrases> = {
+  fr: {
+    toBeDetermined: 'à déterminer',
+    registered: (n) => `${n} inscrit${n > 1 ? 's' : ''}`,
+    places: (n, capacity) => `${n}/${capacity} places`,
+    registrationsHeading: (places) => `Inscrits : ${places}`,
+    noRegistered: 'Aucun inscrit pour le moment.',
+    waitlist: (n) => `Liste d'attente : ${n}`,
+    final: 'Finale',
+    semiFinals: 'Demi-finales',
+    quarterFinals: 'Quarts de finale',
+    round: (n) => `Tour ${n}`,
+    bye: (player) => `${player} : exempt (bye)`,
+    matchday: (n, total) => `Journée ${n}/${total}`,
+    rest: (player) => `Repos : ${player}`,
+    wins: (player) => `victoire de ${player}`,
+    resultsRound: (round) => `Résultats : ${round}`,
+    resultsMatchday: (n, total) => `Résultats : journée ${n}/${total}`,
+    noResults: 'Aucun résultat pour le moment.',
+    champion: (player) => `Vainqueur du tournoi : ${player}`,
+    standings: (state) => `Classement (${state})`,
+    standingsFinal: 'classement final',
+    standingsProgress: (played, total) => `${played}/${total} matchs joués`,
+    standingsRow: (rank, player, points, wins, losses, diff) =>
+      `${rank}. ${player} : ${points} pts (${wins}V ${losses}D, ${diff})`,
+  },
+  en: {
+    toBeDetermined: 'to be determined',
+    registered: (n) => `${n} registered`,
+    places: (n, capacity) => `${n}/${capacity} spots`,
+    registrationsHeading: (places) => `Registered: ${places}`,
+    noRegistered: 'No one registered yet.',
+    waitlist: (n) => `Waiting list: ${n}`,
+    final: 'Final',
+    semiFinals: 'Semi-finals',
+    quarterFinals: 'Quarter-finals',
+    round: (n) => `Round ${n}`,
+    bye: (player) => `${player}: bye`,
+    matchday: (n, total) => `Matchday ${n}/${total}`,
+    rest: (player) => `Rest: ${player}`,
+    wins: (player) => `${player} wins`,
+    resultsRound: (round) => `Results: ${round}`,
+    resultsMatchday: (n, total) => `Results: matchday ${n}/${total}`,
+    noResults: 'No results yet.',
+    champion: (player) => `Tournament winner: ${player}`,
+    standings: (state) => `Standings (${state})`,
+    standingsFinal: 'final standings',
+    standingsProgress: (played, total) => `${played}/${total} matches played`,
+    standingsRow: (rank, player, points, wins, losses, diff) =>
+      `${rank}. ${player}: ${points} pts (${wins}W ${losses}L, ${diff})`,
+  },
+  es: {
+    toBeDetermined: 'por determinar',
+    registered: (n) => `${n} inscrito${n > 1 ? 's' : ''}`,
+    places: (n, capacity) => `${n}/${capacity} plazas`,
+    registrationsHeading: (places) => `Inscritos: ${places}`,
+    noRegistered: 'Nadie inscrito por ahora.',
+    waitlist: (n) => `Lista de espera: ${n}`,
+    final: 'Final',
+    semiFinals: 'Semifinales',
+    quarterFinals: 'Cuartos de final',
+    round: (n) => `Ronda ${n}`,
+    bye: (player) => `${player}: pase directo (bye)`,
+    matchday: (n, total) => `Jornada ${n}/${total}`,
+    rest: (player) => `Descansa: ${player}`,
+    wins: (player) => `gana ${player}`,
+    resultsRound: (round) => `Resultados: ${round}`,
+    resultsMatchday: (n, total) => `Resultados: jornada ${n}/${total}`,
+    noResults: 'Sin resultados por ahora.',
+    champion: (player) => `Ganador del torneo: ${player}`,
+    standings: (state) => `Clasificación (${state})`,
+    standingsFinal: 'clasificación final',
+    standingsProgress: (played, total) => `${played}/${total} partidos jugados`,
+    standingsRow: (rank, player, points, wins, losses, diff) =>
+      `${rank}. ${player}: ${points} pts (${wins}G ${losses}P, ${diff})`,
+  },
+};
 
 /** Table identifiant du joueur → pseudo affiché. */
 export type Names = Readonly<Record<string, string>>;
@@ -21,8 +139,8 @@ export function cleanName(raw: string): string {
     .trim();
 }
 
-function nameOf(names: Names, id: string | null): string {
-  if (id === null) return 'à déterminer';
+function nameOf(names: Names, id: string | null, p: Phrases): string {
+  if (id === null) return p.toBeDetermined;
   const raw = names[id];
   const cleaned = raw === undefined ? '' : cleanName(raw);
   return cleaned === '' ? id : cleaned;
@@ -45,22 +163,25 @@ export interface RegistrationsInput {
   waitlist?: readonly string[];
   /** Nombre de places, si le tournoi en limite le nombre. */
   capacity?: number;
+  /** Langue du texte (français par défaut). */
+  locale?: Locale;
 }
 
 /** Liste des inscrits (et de la liste d'attente) à publier dans le chat. */
 export function formatRegistrations(input: RegistrationsInput): string {
+  const p = PHRASES[input.locale ?? 'fr'];
   const accepted = input.accepted.map(cleanName);
   const waitlist = (input.waitlist ?? []).map(cleanName);
   const places =
     input.capacity === undefined
-      ? `${accepted.length} inscrit${accepted.length > 1 ? 's' : ''}`
-      : `${accepted.length}/${input.capacity} places`;
+      ? p.registered(accepted.length)
+      : p.places(accepted.length, input.capacity);
 
-  const lines = heading(input.title, `Inscrits : ${places}`);
-  if (accepted.length === 0) lines.push('Aucun inscrit pour le moment.');
+  const lines = heading(input.title, p.registrationsHeading(places));
+  if (accepted.length === 0) lines.push(p.noRegistered);
   accepted.forEach((n, i) => lines.push(`${i + 1}. ${n}`));
   if (waitlist.length > 0) {
-    lines.push('', `Liste d'attente : ${waitlist.length}`);
+    lines.push('', p.waitlist(waitlist.length));
     waitlist.forEach((n, i) => lines.push(`${i + 1}. ${n}`));
   }
   return lines.join('\n');
@@ -71,20 +192,25 @@ export function formatRegistrations(input: RegistrationsInput): string {
 // ---------------------------------------------------------------------------------------------
 
 /** Nom d'un tour d'élimination : finale, demi-finales, quarts, sinon « Tour N ». */
-export function bracketRoundName(round: number, totalRounds: number): string {
+export function bracketRoundName(
+  round: number,
+  totalRounds: number,
+  locale: Locale = 'fr',
+): string {
+  const p = PHRASES[locale];
   const fromEnd = totalRounds - round;
-  if (fromEnd === 0) return 'Finale';
-  if (fromEnd === 1) return 'Demi-finales';
-  if (fromEnd === 2) return 'Quarts de finale';
-  return `Tour ${round}`;
+  if (fromEnd === 0) return p.final;
+  if (fromEnd === 1) return p.semiFinals;
+  if (fromEnd === 2) return p.quarterFinals;
+  return p.round(round);
 }
 
-function bracketLine(m: ResolvedMatch, names: Names): string {
+function bracketLine(m: ResolvedMatch, names: Names, p: Phrases): string {
   if (m.aBye || m.bBye) {
     const player = m.aBye ? m.b : m.a;
-    return `${nameOf(names, player)} : exempt (bye)`;
+    return p.bye(nameOf(names, player, p));
   }
-  return `${nameOf(names, m.a)} vs ${nameOf(names, m.b)}`;
+  return `${nameOf(names, m.a, p)} vs ${nameOf(names, m.b, p)}`;
 }
 
 /** Les matchs d'un tour d'élimination directe, sous la forme « A vs B ». */
@@ -93,11 +219,13 @@ export function formatBracketRound(
   round: number,
   names: Names,
   title?: string,
+  locale: Locale = 'fr',
 ): string {
+  const p = PHRASES[locale];
   const matches = bracket.rounds[round - 1];
   if (!matches) throw new RangeError(`Tour inconnu : ${round}.`);
-  const lines = heading(title, bracketRoundName(round, bracket.rounds.length));
-  matches.forEach((m) => lines.push(bracketLine(m, names)));
+  const lines = heading(title, bracketRoundName(round, bracket.rounds.length, locale));
+  matches.forEach((m) => lines.push(bracketLine(m, names, p)));
   return lines.join('\n');
 }
 
@@ -107,13 +235,15 @@ export function formatLeagueRound(
   round: number,
   names: Names,
   title?: string,
+  locale: Locale = 'fr',
 ): string {
+  const p = PHRASES[locale];
   const matches = league.rounds[round - 1];
   if (!matches) throw new RangeError(`Journée inconnue : ${round}.`);
-  const lines = heading(title, `Journée ${round}/${league.rounds.length}`);
-  matches.forEach((m) => lines.push(`${nameOf(names, m.a)} vs ${nameOf(names, m.b)}`));
+  const lines = heading(title, p.matchday(round, league.rounds.length));
+  matches.forEach((m) => lines.push(`${nameOf(names, m.a, p)} vs ${nameOf(names, m.b, p)}`));
   const rest = league.rests[round - 1];
-  if (rest) lines.push(`Repos : ${nameOf(names, rest)}`);
+  if (rest) lines.push(p.rest(nameOf(names, rest, p)));
   return lines.join('\n');
 }
 
@@ -121,9 +251,9 @@ export function formatLeagueRound(
 // Résultats
 // ---------------------------------------------------------------------------------------------
 
-function scoreLine(a: string, b: string, score: Score): string {
+function scoreLine(a: string, b: string, score: Score, p: Phrases): string {
   const aWins = score.a > score.b;
-  return `${a} ${score.a}-${score.b} ${b} (victoire de ${aWins ? a : b})`;
+  return `${a} ${score.a}-${score.b} ${b} (${p.wins(aWins ? a : b)})`;
 }
 
 /** Résultats saisis pour un tour d'élimination directe. Rien si aucun match n'est terminé. */
@@ -132,17 +262,22 @@ export function formatBracketResults(
   round: number,
   names: Names,
   title?: string,
+  locale: Locale = 'fr',
 ): string {
+  const p = PHRASES[locale];
   const matches = bracket.rounds[round - 1];
   if (!matches) throw new RangeError(`Tour inconnu : ${round}.`);
-  const lines = heading(title, `Résultats : ${bracketRoundName(round, bracket.rounds.length)}`);
+  const lines = heading(
+    title,
+    p.resultsRound(bracketRoundName(round, bracket.rounds.length, locale)),
+  );
   const done = matches.filter((m) => m.status === 'done' && m.score !== null);
-  if (done.length === 0) lines.push('Aucun résultat pour le moment.');
+  if (done.length === 0) lines.push(p.noResults);
   for (const m of done) {
-    lines.push(scoreLine(nameOf(names, m.a), nameOf(names, m.b), m.score as Score));
+    lines.push(scoreLine(nameOf(names, m.a, p), nameOf(names, m.b, p), m.score as Score, p));
   }
   if (round === bracket.rounds.length && bracket.champion !== null) {
-    lines.push('', `Vainqueur du tournoi : ${nameOf(names, bracket.champion)}`);
+    lines.push('', p.champion(nameOf(names, bracket.champion, p)));
   }
   return lines.join('\n');
 }
@@ -154,14 +289,16 @@ export function formatLeagueResults(
   round: number,
   names: Names,
   title?: string,
+  locale: Locale = 'fr',
 ): string {
+  const p = PHRASES[locale];
   const matches = league.rounds[round - 1];
   if (!matches) throw new RangeError(`Journée inconnue : ${round}.`);
-  const lines = heading(title, `Résultats : journée ${round}/${league.rounds.length}`);
+  const lines = heading(title, p.resultsMatchday(round, league.rounds.length));
   const played = matches.filter((m) => results[m.id] !== undefined);
-  if (played.length === 0) lines.push('Aucun résultat pour le moment.');
+  if (played.length === 0) lines.push(p.noResults);
   for (const m of played) {
-    lines.push(scoreLine(nameOf(names, m.a), nameOf(names, m.b), results[m.id] as Score));
+    lines.push(scoreLine(nameOf(names, m.a, p), nameOf(names, m.b, p), results[m.id] as Score, p));
   }
   return lines.join('\n');
 }
@@ -171,15 +308,21 @@ export function formatLeagueResults(
 // ---------------------------------------------------------------------------------------------
 
 /** Classement de la ligue : rang, pseudo, points, bilan victoires-défaites. */
-export function formatStandings(standings: Standings, names: Names, title?: string): string {
+export function formatStandings(
+  standings: Standings,
+  names: Names,
+  title?: string,
+  locale: Locale = 'fr',
+): string {
+  const p = PHRASES[locale];
   const state = standings.complete
-    ? 'classement final'
-    : `${standings.played}/${standings.total} matchs joués`;
-  const lines = heading(title, `Classement (${state})`);
+    ? p.standingsFinal
+    : p.standingsProgress(standings.played, standings.total);
+  const lines = heading(title, p.standings(state));
   for (const r of standings.rows) {
     const diff = r.scoreDiff > 0 ? `+${r.scoreDiff}` : `${r.scoreDiff}`;
     lines.push(
-      `${r.rank}. ${nameOf(names, r.playerId)} : ${r.points} pts (${r.wins}V ${r.losses}D, ${diff})`,
+      p.standingsRow(r.rank, nameOf(names, r.playerId, p), r.points, r.wins, r.losses, diff),
     );
   }
   return lines.join('\n');

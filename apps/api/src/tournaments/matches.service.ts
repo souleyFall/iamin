@@ -412,7 +412,15 @@ export class MatchesService {
   async publicView(slug: string) {
     const t = await this.prisma.tournament.findUnique({
       where: { publicSlug: slug },
-      select: { id: true, groupId: true, name: true, format: true, status: true, structure: true },
+      select: {
+        id: true,
+        groupId: true,
+        name: true,
+        format: true,
+        status: true,
+        language: true,
+        structure: true,
+      },
     });
     if (!t) throw new NotFoundException('Tournoi introuvable');
     const revision = await this.prisma.tournamentEvent.count({ where: { tournamentId: t.id } });
@@ -420,6 +428,7 @@ export class MatchesService {
       name: t.name,
       format: t.format,
       status: t.status,
+      language: t.language,
       registrationOpen: t.status === TournamentStatus.REGISTRATION,
       revision,
     };

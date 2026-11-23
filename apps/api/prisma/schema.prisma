@@ -100,6 +100,13 @@ model Group {
   tournaments Tournament[]
 }
 
+/// Langue d'un tournoi : celle de la page des joueurs (par défaut) et des textes du chat.
+enum TournamentLanguage {
+  fr
+  en
+  es
+}
+
 enum TournamentFormat {
   ELIMINATION // élimination directe
   LEAGUE // tournoi à la ronde
@@ -132,20 +139,23 @@ enum Presence {
 
 /// Un tournoi appartient à un seul groupe : toute lecture ou écriture est filtrée par groupId.
 model Tournament {
-  id           String           @id @default(uuid()) @db.Uuid
-  groupId      String           @db.Uuid
-  group        Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id           String             @id @default(uuid()) @db.Uuid
+  groupId      String             @db.Uuid
+  group        Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
   name         String
   format       TournamentFormat
   /// Nombre de places ; les validés au-delà vont en liste d'attente.
   capacity     Int
-  status       TournamentStatus @default(REGISTRATION)
+  status       TournamentStatus   @default(REGISTRATION)
   /// Identifiant du lien public d'inscription (aléatoire, 128 bits). Il ne donne que le droit de
   /// s'inscrire et de voir le nom du tournoi.
-  publicSlug   String           @unique
-  createdAt    DateTime         @default(now())
+  publicSlug   String             @unique
+  createdAt    DateTime           @default(now())
   /// Points du vainqueur quand l'adversaire déclare forfait (le forfait perd 0).
-  forfeitScore Int              @default(1)
+  forfeitScore Int                @default(1)
+  /// Langue de la page des joueurs et des textes du chat, choisie par l'admin ; le joueur peut en
+  /// changer pour lui-même (jamais enregistré côté serveur).
+  language     TournamentLanguage @default(fr)
 
   /// Tirage (vide avant le tirage). La graine est aléatoire, choisie par le serveur et publiée :
   /// avec `drawPlayers` (identifiants triés) n'importe qui peut refaire le tirage et comparer.

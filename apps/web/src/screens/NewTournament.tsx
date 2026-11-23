@@ -3,20 +3,22 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { keys } from '../api/queries';
-import type { Tournament, TournamentFormat } from '../api/types';
+import type { Tournament, TournamentFormat, TournamentLanguage } from '../api/types';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { useCurrentGroup } from '../groups/current';
-import { useI18n } from '../lib/i18n';
+import { LOCALES, useI18n } from '../lib/i18n';
 
 export function NewTournament() {
   const { current, loading } = useCurrentGroup();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const client = useQueryClient();
   const [name, setName] = useState('');
   const [format, setFormat] = useState<TournamentFormat>('ELIMINATION');
   const [capacity, setCapacity] = useState(16);
+  // Par défaut : la langue de l'écran de l'admin, le plus souvent celle de son groupe.
+  const [language, setLanguage] = useState<TournamentLanguage>(locale);
   const groupId = current?.id;
 
   const create = useMutation({
@@ -25,6 +27,7 @@ export function NewTournament() {
         name: name.trim(),
         format,
         capacity,
+        language,
       }),
     onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: keys.scope(groupId ?? '') });
@@ -92,6 +95,24 @@ export function NewTournament() {
           <p className="hint">
             {format === 'LEAGUE' ? t('new.leagueHint') : t('new.eliminationHint')}
           </p>
+        </fieldset>
+
+        <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend>{t('lang.label')}</legend>
+          <div className="segmented">
+            {LOCALES.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                lang={l.code}
+                aria-pressed={language === l.code}
+                onClick={() => setLanguage(l.code)}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <p className="hint">{t('lang.hint')}</p>
         </fieldset>
 
         <div className="field">

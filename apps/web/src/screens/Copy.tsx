@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { chatChoices, copyText } from '../lib/chat';
 import { Icon } from '../components/Icon';
-import { useI18n } from '../lib/i18n';
+import { LOCALES, useI18n } from '../lib/i18n';
 import { useTournamentCtx } from './tournament-context';
 
 /** Copier pour le chat : texte brut prêt à coller dans le chat Plato (moteur @iamin/engine). */
@@ -28,6 +28,11 @@ export function Copy() {
         <h2 className="title">{t('copy.title')}</h2>
       </header>
       <div className="page">
+        <p className="hint">
+          {t('copy.language', {
+            language: LOCALES.find((l) => l.code === tournament.language)?.label ?? '',
+          })}
+        </p>
         <div className="field">
           <label htmlFor="what" style={{ fontSize: 18 }}>
             {t('copy.which')}
