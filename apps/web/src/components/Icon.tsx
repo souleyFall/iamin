@@ -37,6 +37,21 @@ const PATHS = {
       <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
     </>
   ),
+  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  inbox: (
+    <>
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </>
+  ),
+  userPlus: (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="22" y1="11" x2="16" y2="11" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;

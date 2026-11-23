@@ -253,9 +253,9 @@ export function Security() {
         )}
         <h1 className="title">Sécurité</h1>
       </header>
-      <div className="page">
+      <div className="page page-wide panels-grid">
         {mustEnable && (
-          <p className="notice notice-bad" role="status">
+          <p className="notice notice-bad desk-full" role="status">
             La double authentification est obligatoire pour le propriétaire de la plateforme.
             Active-la pour continuer.
           </p>

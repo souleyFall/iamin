@@ -64,7 +64,7 @@ export function Tournaments() {
       <header className="topbar" style={{ justifyContent: 'space-between' }}>
         <div className="logo">i-am-in</div>
       </header>
-      <div className="page">
+      <div className="page page-wide">
         <GroupPicker />
         <ErrorNote error={groupsError} />
         {loading && (
@@ -112,7 +112,7 @@ export function Tournaments() {
             {tournaments.data?.length === 0 && (
               <p className="muted">Aucun tournoi pour l’instant. Crée le premier ci-dessous.</p>
             )}
-            <ul className="rows">
+            <ul className="rows rows-cards">
               {(tournaments.data ?? []).map((t) => {
                 const relay = relayLine(t, meId);
                 return (

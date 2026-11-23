@@ -412,6 +412,11 @@ textarea.input {
   color: var(--action-ink);
 }
 
+/* Bandeau « la main » d'un tournoi, sous l'en-tête. */
+.relay-bar {
+  margin: 8px 20px 0;
+}
+
 /* ----- Écran LCD ----- */
 .screen {
   padding: 12px 8px 10px;
@@ -654,6 +659,281 @@ textarea.input {
   color: var(--muted);
 }
 
+/* ----- Éléments propres à la mise en page (téléphone : comme avant) ----- */
+.nav .nav-brand,
+.nav .nav-section,
+.nav .nav-extra,
+.nav .nav-user {
+  display: none;
+}
+.desk-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ===== Ordinateur (≥ 960 px) : barre latérale + contenu large =====
+   Le téléphone garde la barre du bas et une colonne de 520 px (PWA). Ici l'écran est assez large
+   pour une barre latérale, des grilles de cartes et deux colonnes sur les écrans de travail. */
+@media (min-width: 960px) {
+  :root {
+    --frame: 1180px;
+    --gutter: 40px;
+  }
+
+  /* Boîtier : barre latérale à gauche, tout le reste à droite. */
+  .shell-app {
+    max-width: none;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 252px minmax(0, 1fr);
+  }
+  .shell-app .shell-main {
+    grid-column: 2;
+    grid-row: 1;
+    padding-bottom: 48px;
+  }
+  .shell-app .nav {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 26px 14px 18px;
+    border-top: 0;
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+  }
+  .shell-app .nav .nav-brand {
+    display: block;
+    padding: 2px 14px 22px;
+    font-size: 30px;
+  }
+  .shell-app .nav a {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+    margin-top: 0;
+    border-top: 0;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  .shell-app .nav a:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+  .shell-app .nav a[aria-current='page'] {
+    background: var(--raised);
+    box-shadow: inset 3px 0 0 var(--action);
+  }
+  .shell-app .nav .nav-extra {
+    display: flex;
+  }
+  .shell-app .nav .nav-section {
+    display: block;
+    margin: 20px 0 6px;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .shell-app .nav .nav-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding: 14px 8px 0;
+    border-top: 1px solid var(--line);
+  }
+  .nav-user-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .nav-user-text b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-user-text .muted {
+    font-size: 13px;
+  }
+
+  /* Cadre commun de l'en-tête, des onglets et du contenu : même marge à gauche partout. */
+  .shell-app .topbar,
+  .shell-app .tabs,
+  .shell-app .page {
+    width: min(100% - 2 * var(--gutter), var(--frame));
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+  .shell-app .topbar {
+    padding-top: 30px;
+    padding-bottom: 12px;
+    gap: 12px;
+  }
+  .shell-app .relay-bar {
+    width: min(100% - 2 * var(--gutter), var(--frame));
+    margin: 8px auto 0;
+  }
+  /* La flèche de retour déborde un peu à gauche : son trait, lui, s'aligne sur le contenu. */
+  .shell-app .topbar > .icon-btn.flat:first-child {
+    margin-left: -12px;
+  }
+  .shell-app .topbar:has(> .logo:only-child) {
+    display: none; /* la marque est déjà en haut de la barre latérale */
+  }
+  .shell-app .topbar:has(> .logo:only-child) + .page {
+    padding-top: 36px; /* l'en-tête vide est masqué : on garde l'air du haut */
+  }
+  .shell-app .page-wide > .key-wide {
+    width: auto;
+    align-self: flex-start;
+    min-width: 260px;
+  }
+  .shell-app .title {
+    font-size: 36px;
+  }
+  .shell-app .page {
+    padding-bottom: 28px;
+    gap: 16px;
+  }
+  /* Écrans de lecture et formulaires : une colonne de lecture, pas toute la largeur. */
+  .shell-app .page:not(.page-wide) > * {
+    width: 100%;
+    max-width: 780px;
+  }
+  .shell-app .tabs {
+    overflow-x: visible;
+  }
+  .shell-app .tabs a {
+    flex: 0 0 auto;
+    padding: 0 24px;
+    font-size: 16px;
+  }
+  .shell-app .tabs a:hover {
+    color: var(--text);
+  }
+
+  /* Grille de cartes : liste des tournois et boîte de retours. */
+  .rows-cards,
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .rows.rows-cards > li,
+  .rows.cards-grid > li {
+    padding: 0;
+    border-bottom: 0;
+  }
+  .rows-cards .row-link {
+    height: 100%;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--panel);
+    gap: 10px;
+  }
+  .rows-cards .row-link:hover {
+    border-color: var(--action);
+  }
+  .cards-grid > li.card {
+    height: 100%;
+  }
+
+  /* Deux colonnes sur les écrans de travail : la liste à gauche, ce qui l'accompagne à droite. */
+  .desk-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    grid-template-rows: auto auto 1fr;
+    column-gap: 40px;
+    row-gap: 16px;
+    align-items: start;
+  }
+  .desk-grid > * {
+    grid-column: 1;
+  }
+  .desk-grid > .desk-main {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+  .desk-grid > .desk-a {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .desk-grid > .desk-b {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  /* Rien à droite : la colonne de gauche ne s'étire pas sur toute la largeur. */
+  .desk-grid:not(:has(> .desk-a, > .desk-b)) {
+    grid-template-columns: minmax(0, 860px);
+  }
+  .panels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  .panels-grid > .desk-full {
+    grid-column: 1 / -1;
+  }
+
+  /* Pointage : les joueurs sur deux colonnes. */
+  .list-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    column-gap: 40px;
+  }
+
+  /* Matchs d'un tour : des cartes côte à côte plutôt qu'une longue liste. */
+  .match-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+  }
+  .match-list .match {
+    height: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--panel);
+  }
+  .match-list button.match:hover {
+    border-color: var(--action);
+  }
+
+  /* Feuille de saisie : fenêtre centrée plutôt que tiroir collé en bas. */
+  .sheet {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    width: 480px;
+    max-width: calc(100% - 48px);
+    max-height: 88%;
+    margin: 0;
+    transform: translate(-50%, -50%);
+    padding: 22px 24px 24px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+  }
+  .sheet-grip {
+    display: none;
+  }
+
+  /* Page publique des joueurs : colonne centrée, plus large que sur téléphone. */
+  .shell:not(.shell-app) {
+    max-width: 640px;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .key {
     transition: transform 80ms;
