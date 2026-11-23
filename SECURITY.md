@@ -16,6 +16,10 @@ Dans le périmètre : le code de ce dépôt, sa configuration Docker, ses workfl
 
 Hors périmètre : les services tiers (Plato, hébergeur), les attaques supposant déjà l'accès au poste de l'utilisateur, le déni de service par volume, l'ingénierie sociale contre un admin.
 
+## Mesures en place
+
+Contrôle d'accès par groupe vérifié côté serveur, sessions révocables, mots de passe argon2id, protection CSRF, limites de débit sur toutes les routes publiques, CSP stricte, HTTPS automatique, aucun journal d'accès, sauvegardes de 30 jours. Le détail, les risques acceptés et l'audit de la version 0.1.0 sont dans le [registre des risques](docs/securite/registre-risques.md) ; le traitement des données personnelles, dans le [registre RGPD](docs/rgpd/registre-traitements.md).
+
 ## Ce qu'il ne faut jamais publier
 
 Fichiers `.env`, mots de passe, jetons de session, liens de réinitialisation, ou toute donnée personnelle réelle. Si vous en trouvez dans l'historique du dépôt, signalez-le de la même façon.

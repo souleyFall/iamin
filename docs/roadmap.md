@@ -19,8 +19,8 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 11  | `feat(live)` : page publique et SSE                                               | fusionnée |
 | 12  | `feat(web)` : interface admin (jetons de design, écrans de la maquette)           | fusionnée |
 | 13  | `feat(web)` : interface publique, PWA installable                                 | fusionnée |
-| 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes        | en cours  |
-| 15  | `docs(security)` : audit final, registre des risques, registre des traitements    | prévue    |
+| 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes        | fusionnée |
+| 15  | `docs(security)` : audit final, registre des risques, registre des traitements    | fusionnée |
 
 ## Après
 

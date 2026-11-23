@@ -4,7 +4,7 @@ PWA de gestion de tournois pour les groupes Plato. Un admin crée un tournoi en 
 
 > i-am-in est un outil indépendant, non affilié à Plato. Il n'utilise ni son nom de marque, ni son logo.
 
-**État** : version 0.1.0 en préparation (voir [la feuille de route](docs/roadmap.md)).
+**État** : version 0.1.0 prête à être déployée : les 15 pull requests de la [feuille de route](docs/roadmap.md) sont fusionnées. Reste à choisir un hébergeur et un nom de domaine (voir « Mettre en production »).
 
 ## Pile technique
 
