@@ -1,4 +1,4 @@
-# Feuille de route
+﻿# Feuille de route
 
 Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à jour à chaque fusion.
 
@@ -21,7 +21,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 13  | `feat(web)` : interface publique, PWA installable                                  | fusionnée |
 | 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes         | fusionnée |
 | 15  | `docs(security)` : audit final, registre des risques, registre des traitements     | fusionnée |
-| 16  | `feat(groups)` : le propriétaire valide les super admins, qui créent leurs groupes | en cours  |
+| 16  | `feat(groups)` : le propriétaire valide les super admins, qui créent leurs groupes | fusionnée |
 
 ## Après
 
