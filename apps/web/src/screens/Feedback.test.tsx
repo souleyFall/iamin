@@ -58,7 +58,18 @@ function renderApp(path: string) {
 
 const asRole = (role: Role) => {
   handlers['GET /auth/me'] = () => ({
-    body: { user: { id: 'u1', username: 'alice', platoUsername: 'alice', role }, csrfToken: 'c' },
+    body: {
+      user: {
+        id: 'u1',
+        username: 'alice',
+        platoUsername: 'alice',
+        role,
+        mfaEnabled: role === 'PLATFORM_OWNER',
+      },
+      csrfToken: 'c',
+      // Le propriétaire vient de se connecter avec son code : les actions sensibles sont permises.
+      elevatedUntil: new Date(Date.now() + 600_000).toISOString(),
+    },
   });
   handlers['GET /groups'] = () => ({ body: [] });
 };

@@ -8,7 +8,13 @@ import { setCsrfToken } from './api/client';
 import type { Tournament, TournamentSummary, User } from './api/types';
 import { AuthProvider } from './auth/session';
 
-const me: User = { id: 'u-me', username: 'alice', platoUsername: 'alice_plato', role: 'MEMBER' };
+const me: User = {
+  id: 'u-me',
+  username: 'alice',
+  platoUsername: 'alice_plato',
+  role: 'MEMBER',
+  mfaEnabled: false,
+};
 const GROUP = { id: 'g1', name: 'Les Stratèges', myRole: 'ADMIN', memberCount: 2 };
 
 const summary = (over: Partial<TournamentSummary> = {}): TournamentSummary => ({
@@ -165,7 +171,7 @@ describe('liste des tournois', () => {
 
   it('explique au propriétaire de la plateforme qu’il n’a pas accès aux tournois', async () => {
     handlers['GET /auth/me'] = () => ({
-      body: { user: { ...me, role: 'PLATFORM_OWNER' }, csrfToken: 'c' },
+      body: { user: { ...me, role: 'PLATFORM_OWNER', mfaEnabled: true }, csrfToken: 'c' },
     });
     handlers['GET /groups'] = () => ({ body: [{ ...GROUP, myRole: null }] });
     renderApp('/');

@@ -3,7 +3,14 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
-import { AuthGuard, OriginGuard, RolesGuard } from './auth/guards';
+import {
+  AuthGuard,
+  ElevationGuard,
+  MfaEnrollmentGuard,
+  OriginGuard,
+  RolesGuard,
+} from './auth/guards';
+import { MfaService } from './auth/mfa.service';
 import { CreatorInvitationsController } from './auth/creator-invitations.controller';
 import { InvitationsController } from './auth/invitations.controller';
 import { InvitationsService } from './auth/invitations.service';
@@ -66,6 +73,7 @@ export class AppModule {
         PrismaService,
         SessionService,
         AuthService,
+        MfaService,
         InvitationsService,
         ResetService,
         GroupsService,
@@ -77,11 +85,13 @@ export class AppModule {
         FeedbackService,
         // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
         GroupGuard,
-        // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.
+        // Ordre d'exécution : limite de débit, origine, session et CSRF, rôle, double authentification obligatoire du propriétaire, puis ressaisie du code.
         { provide: APP_GUARD, useClass: ThrottlerGuard },
         { provide: APP_GUARD, useClass: OriginGuard },
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_GUARD, useClass: RolesGuard },
+        { provide: APP_GUARD, useClass: MfaEnrollmentGuard },
+        { provide: APP_GUARD, useClass: ElevationGuard },
       ],
     };
   }

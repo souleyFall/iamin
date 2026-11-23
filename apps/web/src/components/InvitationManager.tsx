@@ -1,4 +1,4 @@
-﻿import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useInvitations } from '../api/queries';
 import { copyText } from '../lib/chat';
 import { ConfirmButton } from './ConfirmButton';
@@ -22,6 +22,7 @@ export function InvitationManager({
   createLabel,
   intro,
   pseudoRequired = false,
+  locked = false,
 }: {
   groupId?: string;
   title: string;
@@ -29,6 +30,8 @@ export function InvitationManager({
   intro: string;
   /** Super admins : le pseudo Plato de la personne invitée est obligatoire (il lui sera imposé). */
   pseudoRequired?: boolean;
+  /** Actions désactivées (ressaisie du code demandée avant). */
+  locked?: boolean;
 }) {
   const { list, create, revoke } = useInvitations(groupId);
   const [copied, setCopied] = useState<boolean | null>(null);
@@ -70,7 +73,7 @@ export function InvitationManager({
             Il sera imposé à la création du compte : seule cette personne peut utiliser le lien.
           </p>
         </div>
-        <button type="submit" className="btn btn-accent" disabled={create.isPending}>
+        <button type="submit" className="btn btn-accent" disabled={create.isPending || locked}>
           {createLabel}
         </button>
       </form>
@@ -109,7 +112,7 @@ export function InvitationManager({
                 <ConfirmButton
                   confirmLabel="Annuler le lien"
                   onConfirm={() => revoke.mutate(inv.id)}
-                  disabled={revoke.isPending}
+                  disabled={revoke.isPending || locked}
                 >
                   Annuler
                 </ConfirmButton>

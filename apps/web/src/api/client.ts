@@ -13,6 +13,8 @@ export class ApiError extends Error {
     readonly status: number,
     message: string,
     readonly fields: Record<string, string> = {},
+    /** Code lisible par machine : `ELEVATION_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`… */
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -38,9 +40,15 @@ const FALLBACK: Record<number, string> = {
 export function describeError(status: number, body: unknown): ApiError {
   const fields: Record<string, string> = {};
   let message = FALLBACK[status] ?? 'Le serveur a répondu par une erreur.';
+  let code: string | undefined;
   if (typeof body === 'object' && body !== null) {
-    const { message: m, errors } = body as { message?: unknown; errors?: unknown };
+    const {
+      message: m,
+      errors,
+      code: c,
+    } = body as { message?: unknown; errors?: unknown; code?: unknown };
     if (typeof m === 'string' && m !== '') message = m;
+    if (typeof c === 'string') code = c;
     if (Array.isArray(errors)) {
       for (const e of errors) {
         const { field, message: text } = e as { field?: unknown; message?: unknown };
@@ -50,7 +58,7 @@ export function describeError(status: number, body: unknown): ApiError {
       if (first !== undefined) message = first;
     }
   }
-  return new ApiError(status, message, fields);
+  return new ApiError(status, message, fields, code);
 }
 
 export async function api<T>(

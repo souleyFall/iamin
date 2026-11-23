@@ -1,11 +1,13 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/session';
 import { Icon } from '../components/Icon';
+import { ElevationPrompt, useElevated } from '../components/Elevation';
 import { InvitationManager } from '../components/InvitationManager';
 
 /** Le propriétaire de la plateforme valide les super admins en leur envoyant un lien d'invitation. */
 export function SuperAdmins() {
   const { user } = useAuth();
+  const elevated = useElevated();
   if (user?.role !== 'PLATFORM_OWNER') return <Navigate to="/" replace />;
   return (
     <>
@@ -16,7 +18,9 @@ export function SuperAdmins() {
         <h1 className="title">Super admins</h1>
       </header>
       <div className="page">
+        <ElevationPrompt reason="Inviter ou annuler l'invitation d'un super admin demande ton code : une session volée ne suffirait pas." />
         <InvitationManager
+          locked={!elevated}
           title="Inviter un super admin"
           createLabel="Créer un lien d’invitation"
           pseudoRequired

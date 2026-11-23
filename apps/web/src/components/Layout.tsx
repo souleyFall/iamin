@@ -21,6 +21,10 @@ export function Layout() {
     );
   if (user === null)
     return <Navigate to="/connexion" replace state={{ from: location.pathname }} />;
+  // Le propriétaire ne peut rien faire avant d'avoir activé la double authentification (l'API le refuse aussi).
+  if (user.role === 'PLATFORM_OWNER' && !user.mfaEnabled && location.pathname !== '/securite') {
+    return <Navigate to="/securite" replace />;
+  }
   return (
     <GroupProvider>
       <div className="shell">

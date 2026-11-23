@@ -33,6 +33,9 @@ export function Me() {
             </Link>
           </>
         )}
+        <Link className="btn" to="/securite">
+          Sécurité du compte{user?.mfaEnabled ? '' : ' (double authentification)'}
+        </Link>
         <Link className="btn" to="/avis">
           Donner mon avis
         </Link>

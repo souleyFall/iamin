@@ -7,7 +7,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { hashPassword, newToken, verifyPassword } from './crypto';
+import { hashPassword, newToken, sha256, verifyPassword } from './crypto';
+import { MfaService } from './mfa.service';
 import { LoginThrottle } from './login-throttle';
 import {
   type AuthContext,
@@ -19,6 +20,9 @@ import {
 
 /** Même message pour un compte inconnu et pour un mauvais mot de passe : pas d'énumération. */
 const LOGIN_FAILED = 'Identifiant ou mot de passe incorrect';
+const CHALLENGE_EXPIRED = 'Connexion expirée, recommence avec ton mot de passe';
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const MAX_CHALLENGE_ATTEMPTS = 5;
 
 @Injectable()
 export class AuthService {
@@ -28,6 +32,7 @@ export class AuthService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(MfaService) private readonly mfa: MfaService,
   ) {}
 
   /**
@@ -39,10 +44,18 @@ export class AuthService {
     return this.dummyHash;
   }
 
+  /**
+   * Première étape : identifiant et mot de passe. Sans double authentification, la session s'ouvre.
+   * Avec, aucune session n'existe encore : on remet un jeton d'étape (5 minutes, 5 essais) à
+   * échanger contre une session avec le code (loginWithCode).
+   */
   async login(
     rawUsername: string,
     password: string,
-  ): Promise<{ user: AuthUser; session: CreatedSession }> {
+  ): Promise<
+    | { mfaRequired: true; challenge: string }
+    | { mfaRequired: false; user: AuthUser; session: CreatedSession }
+  > {
     const username = rawUsername.trim().toLowerCase();
     if (this.throttle.isLocked(username)) {
       throw new HttpException(
@@ -59,8 +72,59 @@ export class AuthService {
     }
 
     this.throttle.reset(username);
-    const session = await this.sessions.create(user.id);
-    return { user: toAuthUser(user), session };
+    if (user.totpEnabledAt) {
+      return { mfaRequired: true, challenge: await this.createChallenge(user.id) };
+    }
+    // Un propriétaire sans double authentification entre quand même : il est dirigé vers son activation
+    // (MfaEnrollmentGuard bloque tout le reste), sinon il ne pourrait jamais l'activer.
+    const session = await this.sessions.create(user.id, new Date(), { role: user.role });
+    return { mfaRequired: false, user: toAuthUser(user), session };
+  }
+
+  private async createChallenge(userId: string, now = new Date()): Promise<string> {
+    const token = newToken();
+    await this.prisma.mfaChallenge.create({
+      data: {
+        tokenHash: sha256(token),
+        userId,
+        expiresAt: new Date(now.getTime() + CHALLENGE_TTL_MS),
+      },
+    });
+    return token;
+  }
+
+  /** Seconde étape : le code (application ou secours) donne la session, déjà « élevée » 10 minutes. */
+  async loginWithCode(
+    challengeToken: string,
+    code: string,
+    now = new Date(),
+  ): Promise<{ user: AuthUser; session: CreatedSession }> {
+    const challenge = await this.prisma.mfaChallenge.findUnique({
+      where: { tokenHash: sha256(challengeToken) },
+      include: { user: true },
+    });
+    if (!challenge || challenge.expiresAt.getTime() <= now.getTime()) {
+      if (challenge) await this.prisma.mfaChallenge.deleteMany({ where: { id: challenge.id } });
+      throw new UnauthorizedException(CHALLENGE_EXPIRED);
+    }
+    if (challenge.attempts >= MAX_CHALLENGE_ATTEMPTS) {
+      await this.prisma.mfaChallenge.deleteMany({ where: { id: challenge.id } });
+      throw new UnauthorizedException(CHALLENGE_EXPIRED);
+    }
+    // Le compteur monte avant la vérification : des essais simultanés ne dépassent pas la limite.
+    await this.prisma.mfaChallenge.update({
+      where: { id: challenge.id },
+      data: { attempts: { increment: 1 } },
+    });
+    if (!(await this.mfa.verify(challenge.user, code, now))) {
+      throw new UnauthorizedException('Code incorrect');
+    }
+    await this.prisma.mfaChallenge.deleteMany({ where: { id: challenge.id } });
+    const session = await this.sessions.create(challenge.userId, now, {
+      role: challenge.user.role,
+      elevated: true,
+    });
+    return { user: toAuthUser(challenge.user), session };
   }
 
   /**

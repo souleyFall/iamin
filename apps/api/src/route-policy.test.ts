@@ -3,7 +3,7 @@ import { RequestMethod } from '@nestjs/common';
 import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { describe, expect, it } from 'vitest';
 import { AppModule } from './app.module';
-import { IS_PUBLIC, ROLES } from './auth/guards';
+import { IS_PUBLIC, MFA_EXEMPT, REQUIRE_ELEVATION, ROLES } from './auth/guards';
 import type { AppConfig } from './config';
 import { GROUP_ACCESS, GroupGuard } from './groups/group.guard';
 
@@ -21,6 +21,7 @@ const config: AppConfig = {
   webOrigin: 'http://localhost:5173',
   sessionCookieSecure: false,
   trustProxy: 0,
+  totpEncryptionKey: Buffer.alloc(32, 7),
 };
 
 /** Clé posée par `@Throttle({ default: ... })` de @nestjs/throttler. */
@@ -35,6 +36,10 @@ interface Route {
   hasThrottle: boolean;
   /** Rôles de plateforme exigés par `@Roles(...)` (vide : tout compte connecté). */
   roles: string[];
+  /** `@RequireElevation()` : ressaisie du code exigée. */
+  elevation: boolean;
+  /** `@MfaExempt()` : accessible au propriétaire avant l'activation de la double authentification. */
+  mfaExempt: boolean;
 }
 
 const join = (...parts: unknown[]): string =>
@@ -72,6 +77,8 @@ function routes(): Route[] {
         hasGroupAccess: meta(GROUP_ACCESS) !== undefined,
         hasThrottle: meta(THROTTLE_LIMIT_KEY) !== undefined,
         roles: (meta(ROLES) as string[] | undefined) ?? [],
+        elevation: meta(REQUIRE_ELEVATION) === true,
+        mfaExempt: meta(MFA_EXEMPT) === true,
       });
     }
   }
@@ -121,6 +128,7 @@ describe('politique des routes (audit)', () => {
         'GET /public/tournaments/:slug',
         'GET /public/tournaments/:slug/view',
         'POST /auth/login',
+        'POST /auth/login/mfa',
         'POST /auth/reset',
         'POST /auth/reset-requests',
         'POST /invitations/accept',
@@ -156,6 +164,33 @@ describe('politique des routes (audit)', () => {
       isPublic: false,
       hasThrottle: true,
     });
+  });
+
+  it('les actions sensibles du propriétaire exigent une ressaisie du code (ElevationGuard)', () => {
+    const sensitive = all.filter((r) => r.elevation).map((r) => r.id);
+    expect(sensitive.sort()).toEqual(
+      [
+        'DELETE /creator-invitations/:invitationId',
+        'DELETE /feedback/:feedbackId',
+        'POST /creator-invitations',
+        'POST /feedback/purge',
+        'POST /reset-tickets/:id/close',
+        'POST /reset-tickets/:id/issue',
+      ].sort(),
+    );
+  });
+
+  it('seules les routes d’activation, « me » et la déconnexion passent sans double authentification', () => {
+    const exempt = all.filter((r) => r.mfaExempt).map((r) => r.id);
+    expect(exempt.sort()).toEqual(
+      [
+        'GET /auth/me',
+        'GET /auth/mfa',
+        'POST /auth/logout',
+        'POST /auth/mfa/enable',
+        'POST /auth/mfa/setup',
+      ].sort(),
+    );
   });
 
   it('seul un super admin (GROUP_CREATOR) crée un groupe : POST /groups exige ce rôle', () => {
