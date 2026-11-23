@@ -90,6 +90,21 @@ bash deploy/restore.sh backups/iamin-AAAAMMJJTHHMMSSZ.dump
 
 Mettre à jour : `git pull` puis la commande `up -d --build` ci-dessus (quelques secondes d'interruption).
 
+### Lire les logs
+
+L'API écrit une ligne JSON par événement (requêtes, erreurs, sécurité, démarrage) ; Docker la garde 5 × 20 Mo. Chaque erreur du serveur affiche à l'écran une référence « (réf. 1a2b3c4d) » : c'est la clé pour retrouver sa ligne. `scripts/logs.mjs` filtre le flux (voir [D28](docs/decisions.md)) :
+
+```bash
+LOGS="docker compose -f docker-compose.prod.yml --env-file .env.prod logs api --no-log-prefix"
+$LOGS --since 1h | node scripts/logs.mjs --summary                    # bilan : erreurs fréquentes, routes lentes
+$LOGS --since 24h | node scripts/logs.mjs --level error               # toutes les erreurs
+$LOGS | node scripts/logs.mjs --req 1a2b3c4d-...                       # tout ce qui s'est passé pour une requête
+$LOGS --since 6h | node scripts/logs.mjs --event security. --level warn   # échecs de connexion, verrouillages
+$LOGS | node scripts/logs.mjs --status 5xx --route /groups --since 1d
+```
+
+`LOG_LEVEL=debug` dans `.env.prod` (puis `up -d`) pour creuser, `warn` pour ne garder que les problèmes.
+
 ## Pour aller plus loin
 
 - Décisions : [docs/decisions.md](docs/decisions.md)

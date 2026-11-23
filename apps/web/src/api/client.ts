@@ -18,6 +18,8 @@ export class ApiError extends Error {
     readonly fields: Record<string, string> = {},
     /** Code lisible par machine : `ELEVATION_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`… */
     readonly code?: string,
+    /** Identifiant de la requête (`x-request-id`) : on le retrouve dans le journal du serveur. */
+    readonly requestId?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -40,7 +42,7 @@ const FALLBACK: Record<number, MessageKey> = {
 };
 
 /** Extrait un message lisible d'une réponse d'erreur de l'API. */
-export function describeError(status: number, body: unknown): ApiError {
+export function describeError(status: number, body: unknown, requestId?: string): ApiError {
   const fields: Record<string, string> = {};
   const fallbackKey = FALLBACK[status] ?? 'err.server';
   let message = translate(activeLocale(), fallbackKey);
@@ -62,7 +64,11 @@ export function describeError(status: number, body: unknown): ApiError {
       if (first !== undefined) message = first;
     }
   }
-  return new ApiError(status, message, fields, code);
+  // Une erreur du serveur (5xx) affiche sa référence : à donner pour retrouver la ligne du journal.
+  if (status >= 500 && requestId) {
+    message = `${message} (${translate(activeLocale(), 'err.ref')} ${requestId.slice(0, 8)})`;
+  }
+  return new ApiError(status, message, fields, code, requestId);
 }
 
 export async function api<T>(
@@ -95,6 +101,8 @@ export async function api<T>(
   } catch {
     parsed = undefined;
   }
-  if (!res.ok) throw describeError(res.status, parsed);
+  if (!res.ok) {
+    throw describeError(res.status, parsed, res.headers.get('x-request-id') ?? undefined);
+  }
   return parsed as T;
 }

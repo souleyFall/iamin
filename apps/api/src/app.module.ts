@@ -27,6 +27,7 @@ import { LocalizedExceptionFilter } from './i18n/localized-exception.filter';
 import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
+import { ClientErrorsController } from './logging/client-errors.controller';
 import { PrismaService } from './prisma.service';
 import { EventsService } from './tournaments/events.service';
 import { LiveController } from './tournaments/live.controller';
@@ -69,6 +70,7 @@ export class AppModule {
         LiveController,
         FeedbackController,
         PublicFeedbackController,
+        ClientErrorsController,
       ],
       providers: [
         { provide: APP_CONFIG, useValue: config },

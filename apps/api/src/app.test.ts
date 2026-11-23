@@ -14,6 +14,7 @@ const config: AppConfig = {
   sessionCookieSecure: false,
   trustProxy: 0,
   totpEncryptionKey: Buffer.alloc(32, 7),
+  logLevel: 'silent',
 };
 
 async function start(

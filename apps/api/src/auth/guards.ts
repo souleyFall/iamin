@@ -13,6 +13,7 @@ import { Role } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { APP_CONFIG } from '../config.token';
 import { readSessionToken } from './cookies';
+import { setRequestUser } from '../logging/context';
 import { safeEqual } from './crypto';
 import { type AuthContext, SessionService } from './session.service';
 
@@ -88,7 +89,11 @@ export class AuthGuard implements CanActivate {
 
     const token = readSessionToken(req.headers.cookie, this.config);
     const auth = token ? await this.sessions.resolve(token) : null;
-    if (auth) req.auth = auth;
+    if (auth) {
+      req.auth = auth;
+      // Les lignes de journal de cette requête portent le compte (identifiant, jamais son nom).
+      setRequestUser(auth.user.id, auth.user.role);
+    }
 
     if (isPublic) return true;
     if (!auth) throw new UnauthorizedException('Connexion requise');

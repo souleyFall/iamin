@@ -16,7 +16,15 @@ describe('loadConfig', () => {
       sessionCookieSecure: false,
       trustProxy: 0,
       totpEncryptionKey: expect.any(Buffer) as Buffer,
+      logLevel: 'info',
     });
+  });
+
+  it('règle le niveau du journal : « info » par défaut, « silent » en test, ou LOG_LEVEL', () => {
+    expect(loadConfig(valid).logLevel).toBe('info');
+    expect(loadConfig({ ...valid, NODE_ENV: 'test' }).logLevel).toBe('silent');
+    expect(loadConfig({ ...valid, NODE_ENV: 'test', LOG_LEVEL: 'debug' }).logLevel).toBe('debug');
+    expect(() => loadConfig({ ...valid, LOG_LEVEL: 'bavard' })).toThrow(/LOG_LEVEL/);
   });
 
   it('lit le nombre de proxys de confiance et refuse une valeur absurde', () => {

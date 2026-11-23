@@ -22,6 +22,7 @@ const config: AppConfig = {
   sessionCookieSecure: false,
   trustProxy: 0,
   totpEncryptionKey: Buffer.alloc(32, 7),
+  logLevel: 'silent',
 };
 
 /** Clé posée par `@Throttle({ default: ... })` de @nestjs/throttler. */
@@ -133,6 +134,7 @@ describe('politique des routes (audit)', () => {
         'POST /auth/reset-requests',
         'POST /invitations/accept',
         'POST /invitations/preview',
+        'POST /public/client-errors',
         'POST /public/feedback',
         'POST /public/tournaments/:slug/registrations',
         // Flux en direct : lu par `@Sse('live')`, qui se déclare comme une route GET.
