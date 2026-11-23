@@ -71,7 +71,8 @@ export async function api<T>(
   body?: unknown,
   extraHeaders: Record<string, string> = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { ...extraHeaders };
+  // La langue de l'écran : l'API renvoie ses messages d'erreur dans cette langue (catalogue de l'API).
+  const headers: Record<string, string> = { 'accept-language': activeLocale(), ...extraHeaders };
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (csrfToken !== undefined && method !== 'GET') headers['x-csrf-token'] = csrfToken;
 

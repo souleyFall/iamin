@@ -1,8 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from '../../api/client';
 import { LanguagePicker } from '../../components/LanguagePicker';
-import { detectLocale, I18nProvider, LOCALES, translate, translatePlural, useI18n } from './index';
+import {
+  activeLocale,
+  detectLocale,
+  I18nProvider,
+  LOCALES,
+  translate,
+  translatePlural,
+  useI18n,
+} from './index';
 import { MESSAGES, PARTS } from './messages';
 
 const KEYS = Object.keys(MESSAGES);
@@ -169,5 +178,71 @@ describe('fournisseur de langue', () => {
       </I18nProvider>,
     );
     expect(screen.getByText('es:Torneos')).toBeTruthy();
+  });
+});
+
+describe('langue envoyée à l’API', () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  function stubFetch() {
+    const sent: Record<string, string>[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init: RequestInit = {}) => {
+        sent.push((init.headers ?? {}) as Record<string, string>);
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      }),
+    );
+    return sent;
+  }
+
+  it('chaque appel annonce la langue de l’écran (pour les messages d’erreur)', async () => {
+    const sent = stubFetch();
+    render(
+      <I18nProvider defaultLocale="es">
+        <Probe />
+      </I18nProvider>,
+    );
+    await api('GET', '/x');
+    expect(sent[0]?.['accept-language']).toBe('es');
+  });
+
+  it('la page d’un tournoi (fournisseur imbriqué) l’emporte sur celui de l’application', async () => {
+    const sent = stubFetch();
+    render(
+      <I18nProvider defaultLocale="fr">
+        <I18nProvider defaultLocale="en">
+          <Probe />
+        </I18nProvider>
+      </I18nProvider>,
+    );
+    expect(screen.getByText('en:Tournaments')).toBeTruthy();
+    expect(activeLocale()).toBe('en');
+    expect(document.documentElement.lang).toBe('en');
+    await api('GET', '/x');
+    expect(sent[0]?.['accept-language']).toBe('en');
+  });
+
+  it('en quittant la page du tournoi, la langue de l’application revient', () => {
+    const view = render(
+      <I18nProvider defaultLocale="fr">
+        <I18nProvider defaultLocale="es">
+          <Probe />
+        </I18nProvider>
+      </I18nProvider>,
+    );
+    expect(activeLocale()).toBe('es');
+    view.unmount();
+    render(
+      <I18nProvider defaultLocale="fr">
+        <Probe />
+      </I18nProvider>,
+    );
+    expect(activeLocale()).toBe('fr');
+    expect(document.documentElement.lang).toBe('fr');
   });
 });
