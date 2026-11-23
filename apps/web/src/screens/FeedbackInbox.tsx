@@ -41,7 +41,7 @@ function Inbox() {
         </Link>
         <h1 className="title">Retours</h1>
       </header>
-      <div className="page">
+      <div className="page page-wide">
         <ElevationPrompt reason="Supprimer un retour ou purger demande ton code. Lire et classer ne le demandent pas." />
         <div className="segmented" role="group" aria-label="Filtrer par statut">
           {FILTERS.map((f) => (
@@ -59,7 +59,7 @@ function Inbox() {
         <ErrorNote error={list.error ?? setStatus.error ?? remove.error ?? purge.error} />
         {list.data?.length === 0 && <p className="muted">Aucun retour dans cette catégorie.</p>}
 
-        <ul className="rows">
+        <ul className="rows cards-grid">
           {(list.data ?? []).map((f) => (
             <li key={f.id} className="card" style={{ display: 'grid', gap: 8 }}>
               <span className="row-head">

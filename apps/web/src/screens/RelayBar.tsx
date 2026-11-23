@@ -109,7 +109,7 @@ export function RelayBar({
   }
 
   return (
-    <section className="card" style={{ margin: '8px 20px 0' }} aria-label="La main sur ce tournoi">
+    <section className="card relay-bar" aria-label="La main sur ce tournoi">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {status}
         {buttons}

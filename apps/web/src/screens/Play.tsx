@@ -24,7 +24,7 @@ function Replacement() {
   );
   if (outs.length === 0 || ins.length === 0) return null;
   return (
-    <details className="panel fold">
+    <details className="panel fold desk-b">
       <summary className="section-title">Remplacer un joueur</summary>
       <div className="field">
         <label htmlFor="replace-out" style={{ fontSize: 16 }}>
@@ -127,37 +127,43 @@ export function Play() {
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <RoundTabs rounds={rounds} index={index} onPick={setPicked} />
 
-      <div className="page" style={{ paddingTop: 8 }}>
-        {isBracketView(draw) && draw.champion && (
-          <p className="card notice notice-ok">Vainqueur du tournoi : {nameOf(draw.champion)}</p>
+      <div className="page page-wide desk-grid" style={{ paddingTop: 8 }}>
+        <div className="desk-main">
+          {isBracketView(draw) && draw.champion && (
+            <p className="card notice notice-ok">Vainqueur du tournoi : {nameOf(draw.champion)}</p>
+          )}
+          {!isHolder && (
+            <p className="hint">Lecture seule : prends la main pour saisir les scores.</p>
+          )}
+          <ul className="match-list">
+            {round.lines.map((l, i) => {
+              const editable = isHolder && (l.state === 'ready' || l.state === 'done');
+              const content = <MatchContent line={l} position={i + 1} nameOf={nameOf} />;
+              return (
+                <li key={l.code}>
+                  {editable ? (
+                    <button
+                      type="button"
+                      className="match"
+                      aria-label={`Saisir le score du match ${i + 1}`}
+                      onClick={() => setEditing(l)}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className="match">{content}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {round.rest && <p className="muted">Repos : {nameOf(round.rest)}</p>}
+        </div>
+        {!isBracketView(draw) && (
+          <div className="desk-a">
+            <StandingsTable standings={draw.standings} nameOf={nameOf} />
+          </div>
         )}
-        {!isHolder && (
-          <p className="hint">Lecture seule : prends la main pour saisir les scores.</p>
-        )}
-        <ul>
-          {round.lines.map((l, i) => {
-            const editable = isHolder && (l.state === 'ready' || l.state === 'done');
-            const content = <MatchContent line={l} position={i + 1} nameOf={nameOf} />;
-            return (
-              <li key={l.code}>
-                {editable ? (
-                  <button
-                    type="button"
-                    className="match"
-                    aria-label={`Saisir le score du match ${i + 1}`}
-                    onClick={() => setEditing(l)}
-                  >
-                    {content}
-                  </button>
-                ) : (
-                  <div className="match">{content}</div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-        {round.rest && <p className="muted">Repos : {nameOf(round.rest)}</p>}
-        {!isBracketView(draw) && <StandingsTable standings={draw.standings} nameOf={nameOf} />}
         <ErrorNote error={editing ? null : act.error} />
         {isHolder && tournament.status === 'STARTED' && <Replacement />}
       </div>

@@ -24,7 +24,7 @@ export function CheckIn() {
   ];
 
   return (
-    <div className="page" style={{ paddingTop: 12 }}>
+    <div className="page page-wide" style={{ paddingTop: 12 }}>
       <div className="screen" role="group" aria-label="Compteurs du pointage">
         {readouts.map((r) => (
           <div className="readout" key={r.label}>
@@ -49,7 +49,7 @@ export function CheckIn() {
       )}
 
       {accepted.length === 0 && <p className="muted">Aucun inscrit à pointer pour l’instant.</p>}
-      <ul>
+      <ul className="list-cols">
         {accepted.map((r) => (
           <li key={r.id} className="player-row">
             <span className="avatar">{initialOf(r.platoName)}</span>
