@@ -16,6 +16,7 @@ import { APP_CONFIG } from '../config.token';
 import { PrismaService } from '../prisma.service';
 import { decryptSecret, encryptSecret, sha256, verifyPassword } from './crypto';
 import { LoginThrottle } from './login-throttle';
+import { SecurityService } from './security.service';
 import { SessionService } from './session.service';
 
 const ISSUER = 'i-am-in';
@@ -60,6 +61,7 @@ export class MfaService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(SecurityService) private readonly security: SecurityService,
   ) {}
 
   private totp(user: Pick<User, 'username'>, secret: OTPAuth.Secret): OTPAuth.TOTP {
@@ -106,6 +108,7 @@ export class MfaService {
     await this.prisma.user.update({ where: { id: userId }, data: { totpEnabledAt: now } });
     await this.sessions.destroyAllForUser(userId, sessionId);
     await this.sessions.elevate(sessionId, now);
+    await this.security.record(userId, 'MFA_ENABLED');
     return { recoveryCodes };
   }
 
@@ -165,13 +168,20 @@ export class MfaService {
    * Vérifie un code d'une application (6 chiffres) ou un code de secours. Les échecs sont comptés
    * par compte : trop d'essais et le compte attend quelques minutes (R25, R28).
    */
-  async verify(user: User, code: string, now = new Date()): Promise<boolean> {
+  async verify(user: User, code: string, now = new Date(), device?: string): Promise<boolean> {
     this.assertNotLocked(user.id);
-    const ok = isTotpFormat(code)
+    const totp = isTotpFormat(code);
+    const ok = totp
       ? await this.checkTotp(user, code, now)
       : await this.checkRecovery(user.id, code, now);
-    if (ok) this.throttle.reset(`mfa:${user.id}`);
-    else this.throttle.recordFailure(`mfa:${user.id}`);
+    if (ok) {
+      this.throttle.reset(`mfa:${user.id}`);
+      // Un code de secours est exceptionnel : le titulaire doit le voir passer.
+      if (!totp) await this.security.record(user.id, 'RECOVERY_USED', device);
+    } else {
+      this.throttle.recordFailure(`mfa:${user.id}`);
+      await this.security.recordOnce(user.id, 'MFA_FAILED', device, now);
+    }
     return ok;
   }
 
@@ -188,7 +198,9 @@ export class MfaService {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.totpEnabledAt) throw new ForbiddenException(MFA_REQUIRED_MESSAGE);
     if (!(await this.verify(user, code, now))) throw new UnauthorizedException(CODE_INVALID);
-    return { recoveryCodes: await this.replaceRecoveryCodes(userId) };
+    const recoveryCodes = await this.replaceRecoveryCodes(userId);
+    await this.security.record(userId, 'RECOVERY_REGENERATED');
+    return { recoveryCodes };
   }
 
   private async replaceRecoveryCodes(userId: string): Promise<string[]> {

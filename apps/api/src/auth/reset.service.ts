@@ -10,6 +10,7 @@ import type { AppConfig } from '../config';
 import { APP_CONFIG } from '../config.token';
 import { PrismaService } from '../prisma.service';
 import { hashPassword, newToken, sha256 } from './crypto';
+import { SecurityService } from './security.service';
 import { SessionService } from './session.service';
 
 /** Un jeton de réinitialisation vit une heure : le propriétaire le transmet tout de suite. */
@@ -22,6 +23,7 @@ export class ResetService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(SecurityService) private readonly security: SecurityService,
   ) {}
 
   /**
@@ -74,6 +76,12 @@ export class ResetService {
       data: { status: 'ISSUED', tokenHash: sha256(token), issuedAt: now, expiresAt },
     });
     if (count === 0) await this.failNotActive(ticketId);
+    // Le titulaire du compte voit dans son journal qu'un lien a été émis pour lui.
+    const ticket = await this.prisma.resetTicket.findUnique({
+      where: { id: ticketId },
+      select: { userId: true },
+    });
+    if (ticket) await this.security.record(ticket.userId, 'RESET_LINK_ISSUED');
     return { token, url: `${this.config.webOrigin}/reinitialisation/${token}`, expiresAt };
   }
 
@@ -124,5 +132,6 @@ export class ResetService {
       });
     });
     await this.sessions.destroyAllForUser(ticket.userId);
+    await this.security.record(ticket.userId, 'PASSWORD_RESET');
   }
 }

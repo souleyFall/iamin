@@ -1,27 +1,39 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
+  NotFoundException,
+  Param,
   Post,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { AppConfig } from '../config';
 import { APP_CONFIG } from '../config.token';
 import { AuthService } from './auth.service';
 import { clearSessionCookie, setSessionCookie } from './cookies';
+import { deviceLabel } from './device';
 import { type AuthedRequest, MfaExempt, Public } from './guards';
 import { MfaService } from './mfa.service';
 import { ResetService } from './reset.service';
 import { passwordSchema, parseBody, tokenSchema } from './schemas';
+import { SecurityService } from './security.service';
 import { SessionService, type AuthContext } from './session.service';
 
+/** D'où vient la requête : l'adresse sert à la limite de tentatives, l'appareil à la liste des sessions. */
+const contextOf = (req: Request) => ({
+  ip: req.ip,
+  device: deviceLabel(req.headers['user-agent']),
+});
+
+const idSchema = z.string().uuid();
 const loginSchema = z.object({ username: z.string().max(64), password: z.string().max(128) });
 const changePasswordSchema = z.object({
   currentPassword: z.string().max(128),
@@ -49,15 +61,20 @@ export class AuthController {
     @Inject(ResetService) private readonly reset: ResetService,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(MfaService) private readonly mfa: MfaService,
+    @Inject(SecurityService) private readonly security: SecurityService,
   ) {}
 
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   @Post('login')
-  async login(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Req() req: Request,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { username, password } = parseBody(loginSchema, body);
-    const result = await this.auth.login(username, password);
+    const result = await this.auth.login(username, password, contextOf(req));
     // Double authentification active : aucun cookie, seulement un jeton d'étape à échanger avec le code.
     if (result.mfaRequired) return { mfaRequired: true as const, challenge: result.challenge };
     setSessionCookie(res, result.session.token, result.session.expiresAt, this.config);
@@ -69,9 +86,13 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)
   @Post('login/mfa')
-  async loginMfa(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+  async loginMfa(
+    @Req() req: Request,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { challenge, code } = parseBody(loginMfaSchema, body);
-    const { user, session } = await this.auth.loginWithCode(challenge, code);
+    const { user, session } = await this.auth.loginWithCode(challenge, code, contextOf(req));
     setSessionCookie(res, session.token, session.expiresAt, this.config);
     return { user, csrfToken: session.csrfToken, elevatedUntil: session.elevatedUntil };
   }
@@ -162,7 +183,51 @@ export class AuthController {
   @Post('change-password')
   async changePassword(@Req() req: AuthedRequest, @Body() body: unknown) {
     const { currentPassword, newPassword } = parseBody(changePasswordSchema, body);
-    await this.auth.changePassword(requireAuth(req), currentPassword, newPassword);
+    await this.auth.changePassword(requireAuth(req), currentPassword, newPassword, contextOf(req));
+  }
+
+  /** Mes sessions ouvertes (appareil, dates) : pour repérer et fermer celle qui n'est pas la mienne. */
+  @Get('sessions')
+  mySessions(@Req() req: AuthedRequest) {
+    const auth = requireAuth(req);
+    return this.sessions.listForUser(auth.user.id, auth.sessionId);
+  }
+
+  /** Ferme une autre session. La mienne se ferme avec « se déconnecter ». */
+  @HttpCode(204)
+  @Delete('sessions/:sessionId')
+  async closeSession(@Req() req: AuthedRequest, @Param('sessionId') sessionId: string) {
+    const auth = requireAuth(req);
+    const closed = await this.sessions.destroyOther(
+      auth.user.id,
+      parseBody(idSchema, sessionId),
+      auth.sessionId,
+    );
+    if (!closed) throw new NotFoundException('Session introuvable');
+    await this.security.record(
+      auth.user.id,
+      'SESSIONS_REVOKED',
+      deviceLabel(req.headers['user-agent']),
+    );
+  }
+
+  /** Ferme toutes mes autres sessions (« ce n'est pas moi », téléphone perdu). */
+  @HttpCode(204)
+  @Post('sessions/close-others')
+  async closeOtherSessions(@Req() req: AuthedRequest) {
+    const auth = requireAuth(req);
+    await this.sessions.destroyAllForUser(auth.user.id, auth.sessionId);
+    await this.security.record(
+      auth.user.id,
+      'SESSIONS_REVOKED',
+      deviceLabel(req.headers['user-agent']),
+    );
+  }
+
+  /** Mon journal de sécurité : connexions, échecs, liens émis, codes de secours… (30 jours). */
+  @Get('activity')
+  activity(@Req() req: AuthedRequest) {
+    return this.security.recent(requireAuth(req).user.id);
   }
 
   /** « J'ai oublié mon mot de passe » : même réponse que le compte existe ou non. */

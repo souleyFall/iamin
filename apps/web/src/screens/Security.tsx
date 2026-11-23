@@ -8,6 +8,7 @@ import { ConfirmButton } from '../components/ConfirmButton';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { QrCode } from '../components/QrCode';
+import { ActivityPanel, SessionsPanel } from '../components/SecurityPanels';
 import { copyText } from '../lib/chat';
 
 const STATUS = ['mfa-status'] as const;
@@ -273,6 +274,12 @@ export function Security() {
         ) : status.data ? (
           <Enable onEnabled={setCodes} />
         ) : null}
+        {!codes && !mustEnable && status.data && (
+          <>
+            <SessionsPanel />
+            <ActivityPanel />
+          </>
+        )}
       </div>
     </>
   );

@@ -25,6 +25,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 17  | `feat(groups)` : pseudo Plato imposé par l'invitation                              | fusionnée |
 | 18  | `feat(feedback)` : retours des utilisateurs (idées, améliorations, bugs)           | fusionnée |
 | 19  | `feat(auth)` : double authentification (TOTP) du propriétaire, ressaisie du code   | fusionnée |
+| 20  | `feat(auth)` : verrouillage par adresse, sessions actives, journal de sécurité     | fusionnée |
 
 ## Après
 

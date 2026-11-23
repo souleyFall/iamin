@@ -196,8 +196,12 @@ export class Client {
    * Se connecte et mémorise cookie et jeton CSRF. Si le compte a la double authentification et que
    * le test en connaît le secret, la seconde étape est faite ici avec un code valide.
    */
-  async login(username: string, password: string): Promise<Reply> {
-    let reply = await this.request('POST', '/auth/login', { username, password });
+  async login(
+    username: string,
+    password: string,
+    headers: Record<string, string> = {},
+  ): Promise<Reply> {
+    let reply = await this.request('POST', '/auth/login', { username, password }, { headers });
     const first = reply.body as { mfaRequired?: boolean; challenge?: string } | undefined;
     if (
       reply.status === 200 &&
@@ -211,10 +215,12 @@ export class Client {
         where: { username: username.toLowerCase() },
         data: { totpLastStep: null },
       });
-      reply = await this.request('POST', '/auth/login/mfa', {
-        challenge: first.challenge,
-        code: totpCodeFor(username.toLowerCase()),
-      });
+      reply = await this.request(
+        'POST',
+        '/auth/login/mfa',
+        { challenge: first.challenge, code: totpCodeFor(username.toLowerCase()) },
+        { headers },
+      );
     }
     const body = reply.body as { csrfToken?: string } | undefined;
     if (reply.status === 200 && body?.csrfToken) this.csrfToken = body.csrfToken;

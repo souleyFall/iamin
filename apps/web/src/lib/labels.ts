@@ -1,5 +1,6 @@
 import type {
   FeedbackKind,
+  SecurityEventType,
   FeedbackStatus,
   Presence,
   TournamentFormat,
@@ -87,3 +88,27 @@ const EVENT_LABEL: Record<string, string> = {
 
 /** Texte d'un événement du journal ; un type inconnu s'affiche tel quel (jamais d'erreur). */
 export const eventLabel = (type: string): string => EVENT_LABEL[type] ?? type;
+
+export const SECURITY_EVENT_LABEL: Record<SecurityEventType, string> = {
+  LOGIN_OK: 'Connexion réussie',
+  LOGIN_FAILED: 'Mot de passe incorrect',
+  MFA_FAILED: 'Code de double authentification incorrect',
+  ACCOUNT_LOCKED: 'Compte bloqué après trop d’essais',
+  MFA_ENABLED: 'Double authentification activée',
+  RECOVERY_USED: 'Code de secours utilisé',
+  RECOVERY_REGENERATED: 'Nouveaux codes de secours générés',
+  PASSWORD_CHANGED: 'Mot de passe changé',
+  PASSWORD_RESET: 'Mot de passe changé avec un lien de réinitialisation',
+  RESET_LINK_ISSUED: 'Lien de réinitialisation émis pour ce compte',
+  SESSIONS_REVOKED: 'Sessions fermées',
+  CREATOR_INVITED: 'Super admin invité',
+};
+
+/** Événements à regarder de près : si ce n'est pas toi, change ton mot de passe et ferme les sessions. */
+export const SECURITY_EVENT_ALERT: ReadonlySet<SecurityEventType> = new Set([
+  'LOGIN_FAILED',
+  'MFA_FAILED',
+  'ACCOUNT_LOCKED',
+  'RECOVERY_USED',
+  'RESET_LINK_ISSUED',
+]);
