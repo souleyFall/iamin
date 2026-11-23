@@ -1,4 +1,4 @@
-# Registre des risques de sécurité
+﻿# Registre des risques de sécurité
 
 Suivi des failles possibles d'i-am-in, classées selon l'[OWASP Top 10 (2021)](https://owasp.org/Top10/). Ce registre est vivant : chaque PR qui touche à la sécurité le met à jour. L'audit final de la version 0.1.0 (PR n°15) est résumé en bas de page.
 
@@ -58,7 +58,7 @@ Menaces principales : un admin d'un autre groupe, un joueur anonyme malveillant,
 | Contrôle                                                                     | Résultat                                                                                                                                                                       |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Toutes les routes sous `/groups/:groupId` ont `GroupGuard` et `@GroupAccess` | 25 routes sur 25. Désormais **gardé par un test** (`route-policy.test.ts`) : une route oubliée fait échouer la CI                                                              |
-| Toutes les routes publiques ont une limite de débit                          | Oui, sauf `/health` (sonde sans donnée). Gardé par le même test, avec la liste exacte des 11 routes publiques : en ajouter une exige de modifier le test, donc d'y réfléchir   |
+| Toutes les routes publiques ont une limite de débit                          | Oui, sauf `/health` (sonde sans donnée). Gardé par le même test, avec la liste exacte des 12 routes publiques : en ajouter une exige de modifier le test, donc d'y réfléchir   |
 | Requêtes SQL                                                                 | Prisma, ou gabarits `$queryRaw` paramétrés (verrou de ligne). Aucun `$queryRawUnsafe` hors des tests (vidage des tables de test, constante)                                    |
 | Injection de HTML ou de code                                                 | Aucun `dangerouslySetInnerHTML`, `innerHTML`, `eval` ni `new Function` ; CSP stricte en production                                                                             |
 | Aléa                                                                         | Jetons et graines via `node:crypto` ; aucun `Math.random` dans le code de l'application                                                                                        |

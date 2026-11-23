@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
@@ -37,7 +37,7 @@ export function AcceptInvitation() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void run(() =>
-      accept({ token, username: username.trim(), password, platoUsername: platoUsername.trim() }),
+      accept({ token, username: username.trim(), password, platoUsername: pseudo.trim() }),
     );
   };
 
@@ -47,6 +47,17 @@ export function AcceptInvitation() {
       await client.invalidateQueries({ queryKey: ['groups'] });
       await refresh();
     });
+
+  // Le lien peut imposer un pseudo Plato : on le demande au serveur (POST, le jeton reste hors de
+  // l'adresse) pour pré-remplir et verrouiller le champ. Un lien invalide est signalé tout de suite.
+  const preview = useQuery({
+    queryKey: ['invitation-preview', token],
+    queryFn: () => api<{ platoUsername: string | null }>('POST', '/invitations/preview', { token }),
+    retry: false,
+    staleTime: Infinity,
+  });
+  const lockedPseudo = preview.data?.platoUsername ?? null;
+  const pseudo = lockedPseudo ?? platoUsername;
 
   const fieldError = error instanceof ApiError ? error.fields : {};
 
@@ -107,13 +118,18 @@ export function AcceptInvitation() {
             <input
               id="plato"
               className="input"
-              value={platoUsername}
+              value={pseudo}
               onChange={(e) => setPlatoUsername(e.target.value)}
+              readOnly={lockedPseudo !== null}
               autoCapitalize="none"
               spellCheck={false}
               required
             />
-            <p className="hint">Il sert à vérifier ton identité si tu perds ton mot de passe.</p>
+            <p className="hint">
+              {lockedPseudo !== null
+                ? 'Ce lien est réservé à ce pseudo Plato : il ne se modifie pas.'
+                : 'Il sert à vérifier ton identité si tu perds ton mot de passe.'}
+            </p>
             {fieldError.platoUsername && <p className="error">{fieldError.platoUsername}</p>}
           </div>
           <div className="field">
@@ -130,7 +146,9 @@ export function AcceptInvitation() {
             />
             {fieldError.password && <p className="error">{fieldError.password}</p>}
           </div>
-          <ErrorNote error={Object.keys(fieldError).length === 0 ? error : null} />
+          <ErrorNote
+            error={Object.keys(fieldError).length === 0 ? (error ?? preview.error) : null}
+          />
           <button className="key key-wide" type="submit" disabled={busy}>
             Créer mon compte
           </button>

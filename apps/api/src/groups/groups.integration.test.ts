@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tests d'intégration des groupes, des invitations d'admins et, surtout, de l'ACCÈS CROISÉ
  * (risque R1) : un compte d'un groupe ne voit, ne modifie et ne devine rien d'un autre groupe.
  * Même fonctionnement que les tests d'authentification : vraie API, vraie base `…_test`.
@@ -33,6 +33,7 @@ interface Created {
     url: string;
     groupRole: string | null;
     groupId: string | null;
+    platoUsername: string | null;
   };
 }
 
@@ -93,7 +94,9 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
     it('le propriétaire invite un super admin : lien sans groupe, jeton stocké haché', async () => {
       await owner();
       const c = await loggedIn('owner');
-      const reply = await c.request('POST', '/creator-invitations');
+      const reply = await c.request('POST', '/creator-invitations', {
+        platoUsername: 'Chef_Plato',
+      });
       expect(reply.status).toBe(201);
       const inv = reply.body as Created['invitation'];
       expect(inv).toMatchObject({ groupId: null, groupRole: null });
@@ -113,10 +116,15 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
       await creator();
       for (const user of ['alice', 'adam', 'chef']) {
         const c = await loggedIn(user);
-        expect((await c.request('POST', '/creator-invitations')).status).toBe(403);
+        expect(
+          (await c.request('POST', '/creator-invitations', { platoUsername: 'Chef_Plato' })).status,
+        ).toBe(403);
         expect((await c.request('GET', '/creator-invitations')).status).toBe(403);
       }
-      expect((await client().request('POST', '/creator-invitations')).status).toBe(401);
+      expect(
+        (await client().request('POST', '/creator-invitations', { platoUsername: 'Chef_Plato' }))
+          .status,
+      ).toBe(401);
       expect(await t.prisma.invitation.count()).toBe(0);
     });
 
@@ -133,8 +141,11 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
 
     it('accepter le lien crée un super admin, sans groupe ni appartenance', async () => {
       await owner();
-      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
-        .body as Created['invitation'];
+      const inv = (
+        await (
+          await loggedIn('owner')
+        ).request('POST', '/creator-invitations', { platoUsername: 'Chef_Plato' })
+      ).body as Created['invitation'];
       const chef = client();
       const accept = await chef.request('POST', '/invitations/accept', {
         token: inv.token,
@@ -162,9 +173,12 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
 
     it('un compte membre qui utilise le lien (join) devient super admin', async () => {
       const { a } = await world();
-      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
-        .body as Created['invitation'];
-      const alice = await loggedIn('alice');
+      const inv = (
+        await (
+          await loggedIn('owner')
+        ).request('POST', '/creator-invitations', { platoUsername: 'ALICE' })
+      ).body as Created['invitation'];
+      const alice = await loggedIn('alice'); // son pseudo Plato est « alice » : la casse ne compte pas
       const joined = await alice.request('POST', '/invitations/join', { token: inv.token });
       expect(joined.status).toBe(200);
       expect(joined.body).toEqual({ groupId: null });
@@ -179,16 +193,113 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
     it('« join » refuse un super admin ou le propriétaire, sans consommer le lien', async () => {
       await owner();
       await creator();
-      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
-        .body as Created['invitation'];
+      const boss = await loggedIn('owner');
       for (const user of ['chef', 'owner']) {
+        // Invitation faite au pseudo du compte : seul le rôle l'empêche d'aboutir.
+        const inv = (await boss.request('POST', '/creator-invitations', { platoUsername: user }))
+          .body as Created['invitation'];
         const c = await loggedIn(user);
         expect((await c.request('POST', '/invitations/join', { token: inv.token })).status).toBe(
           409,
         );
+        const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
+        expect(row.usedAt).toBeNull();
       }
+    });
+
+    it('le pseudo Plato est obligatoire pour inviter un super admin, et nettoyé', async () => {
+      await owner();
+      const c = await loggedIn('owner');
+      for (const body of [undefined, {}, { platoUsername: '' }, { platoUsername: 'a\nb' }]) {
+        expect((await c.request('POST', '/creator-invitations', body)).status).toBe(400);
+      }
+      expect(await t.prisma.invitation.count()).toBe(0);
+    });
+
+    it('le pseudo de l’invitation est imposé à la création du compte', async () => {
+      await owner();
+      const inv = (
+        await (
+          await loggedIn('owner')
+        ).request('POST', '/creator-invitations', {
+          platoUsername: 'Karim_77',
+        })
+      ).body as Created['invitation'];
+      expect(inv.platoUsername).toBe('Karim_77');
+      const attempt = (platoUsername: string, username: string) =>
+        client().request('POST', '/invitations/accept', {
+          token: inv.token,
+          username,
+          password: PASSWORD,
+          platoUsername,
+        });
+
+      // Un autre pseudo : refusé, et l'invitation n'est pas consommée.
+      expect((await attempt('Autre_Pseudo', 'karim')).status).toBe(400);
+      expect(await t.prisma.user.count({ where: { username: 'karim' } })).toBe(0);
+      // Le bon pseudo (casse ignorée) passe ; le compte garde celui de l'invitation.
+      expect((await attempt('karim_77', 'karim')).status).toBe(201);
+      const user = await t.prisma.user.findUniqueOrThrow({ where: { username: 'karim' } });
+      expect(user.platoUsername).toBe('Karim_77');
+    });
+
+    it('« join » refuse un compte dont le pseudo Plato n’est pas celui de l’invitation', async () => {
+      await world();
+      const inv = (
+        await (
+          await loggedIn('owner')
+        ).request('POST', '/creator-invitations', {
+          platoUsername: 'quelquun_d_autre',
+        })
+      ).body as Created['invitation'];
+      const alice = await loggedIn('alice');
+      expect((await alice.request('POST', '/invitations/join', { token: inv.token })).status).toBe(
+        403,
+      );
       const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
       expect(row.usedAt).toBeNull();
+      expect((await t.prisma.user.findUniqueOrThrow({ where: { username: 'alice' } })).role).toBe(
+        'MEMBER',
+      );
+    });
+
+    it('la page du lien apprend le pseudo imposé, sans rien révéler d’un jeton invalide', async () => {
+      await owner();
+      const boss = await loggedIn('owner');
+      const named = (
+        await boss.request('POST', '/creator-invitations', { platoUsername: 'Karim_77' })
+      ).body as Created['invitation'];
+      const preview = (token: string) =>
+        client().request('POST', '/invitations/preview', { token });
+
+      const ok = await preview(named.token);
+      expect(ok.status).toBe(200);
+      expect(ok.body).toEqual({ platoUsername: 'Karim_77' });
+
+      await t.prisma.invitation.update({
+        where: { id: named.id },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+      const replies = [await preview(named.token), await preview('x'.repeat(43))];
+      for (const r of replies) expect(r.status).toBe(400);
+      expect(new Set(replies.map((r) => JSON.stringify(r.body))).size).toBe(1);
+    });
+
+    it('le pseudo est facultatif pour inviter un admin, et se voit dans la liste', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const free = await alice.request('POST', `/groups/${a.id}/invitations`, {});
+      expect(free.body).toMatchObject({ platoUsername: null });
+      const named = await alice.request('POST', `/groups/${a.id}/invitations`, {
+        platoUsername: 'Sana.fx',
+      });
+      expect(named.body).toMatchObject({ platoUsername: 'Sana.fx', groupRole: 'ADMIN' });
+      const list = (await alice.request('GET', `/groups/${a.id}/invitations`)).body as {
+        platoUsername: string | null;
+      }[];
+      expect(list.map((i) => i.platoUsername)).toHaveLength(2);
+      expect(list.map((i) => i.platoUsername)).toContain(null);
+      expect(list.map((i) => i.platoUsername)).toContain('Sana.fx');
     });
 
     it('un super admin crée un groupe et en devient le super admin, lui seul', async () => {

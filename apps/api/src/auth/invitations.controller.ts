@@ -46,6 +46,18 @@ export class InvitationsController {
     return { user, csrfToken: session.csrfToken };
   }
 
+  /**
+   * La page du lien demande si l'invitation impose un pseudo Plato. En POST pour que le jeton ne
+   * passe jamais dans une adresse. Refus identique pour un jeton inconnu, expiré ou déjà utilisé.
+   */
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('preview')
+  preview(@Body() body: unknown) {
+    return this.invitations.preview(parseBody(joinSchema, body).token);
+  }
+
   /** Un compte déjà connecté rejoint un autre groupe avec une invitation. */
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(200)

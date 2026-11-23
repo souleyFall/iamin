@@ -74,7 +74,12 @@ describe('le propriétaire valide les super admins', () => {
     handlers['GET /creator-invitations'] = () => ({ body: pending });
     handlers['POST /creator-invitations'] = () => {
       pending = [
-        { id: 'i1', createdAt: '2026-11-23T10:00:00Z', expiresAt: '2099-01-01T00:00:00Z' },
+        {
+          id: 'i1',
+          platoUsername: 'Karim_77',
+          createdAt: '2026-11-23T10:00:00Z',
+          expiresAt: '2099-01-01T00:00:00Z',
+        },
       ];
       return {
         status: 201,
@@ -82,15 +87,24 @@ describe('le propriétaire valide les super admins', () => {
           id: 'i1',
           groupId: null,
           groupRole: null,
+          platoUsername: 'Karim_77',
           expiresAt: '2099-01-01T00:00:00Z',
           url: 'https://i-am-in.test/invitation/jeton-secret',
         },
       };
     };
     const u = renderApp('/super-admins');
-    await u.click(await screen.findByRole('button', { name: 'Créer un lien d’invitation' }));
+    // Le pseudo Plato est obligatoire pour un super admin : sans lui, le formulaire ne part pas.
+    const pseudo = await screen.findByLabelText<HTMLInputElement>('Pseudo Plato de la personne');
+    expect(pseudo.required).toBe(true);
+    await u.type(pseudo, 'Karim_77');
+    await u.click(screen.getByRole('button', { name: 'Créer un lien d’invitation' }));
     expect(await screen.findByText('https://i-am-in.test/invitation/jeton-secret')).toBeTruthy();
+    expect(calls.find((c) => c.key === 'POST /creator-invitations')?.body).toEqual({
+      platoUsername: 'Karim_77',
+    });
     expect(await screen.findByText(/En attente · 1/)).toBeTruthy();
+    expect(screen.getByText('Karim_77')).toBeTruthy();
   });
 
   it('refuse l’écran à un compte qui n’est pas le propriétaire', async () => {
@@ -161,9 +175,14 @@ describe('la page du lien d’invitation', () => {
       body: { user: user('GROUP_CREATOR'), csrfToken: 'csrf-2' },
     });
     handlers['GET /groups'] = () => ({ body: [] });
+    // Le lien impose un pseudo : le champ est pré-rempli et verrouillé, on ne le tape pas.
+    handlers['POST /invitations/preview'] = () => ({ body: { platoUsername: 'chef_plato' } });
     const u = renderApp('/invitation/le-jeton-du-lien');
     await u.type(await screen.findByLabelText('Identifiant'), 'chef');
-    await u.type(screen.getByLabelText('Pseudo Plato'), 'chef_plato');
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>('Pseudo Plato').value).toBe('chef_plato'),
+    );
+    expect(screen.getByLabelText<HTMLInputElement>('Pseudo Plato').readOnly).toBe(true);
     await u.type(screen.getByLabelText('Mot de passe'), 'un-mot-de-passe-de-test');
     await u.click(screen.getByRole('button', { name: 'Créer mon compte' }));
     expect(await screen.findByText(/crée ton premier groupe/)).toBeTruthy();

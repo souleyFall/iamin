@@ -1,12 +1,13 @@
-import { Controller, Delete, Get, Inject, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Post, Req } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth } from './auth.controller';
 import { type AuthedRequest, Roles } from './guards';
 import { InvitationsService } from './invitations.service';
-import { parseBody } from './schemas';
+import { parseBody, platoUsernameSchema } from './schemas';
 
 const idSchema = z.string().uuid();
+const createSchema = z.object({ platoUsername: platoUsernameSchema });
 
 /**
  * Le propriétaire de la plateforme invite des super admins : des comptes qui, seuls, peuvent créer
@@ -19,8 +20,10 @@ export class CreatorInvitationsController {
 
   /** Crée un lien d'invitation (7 jours, un seul usage) à transmettre au futur super admin. */
   @Post()
-  create(@Req() req: AuthedRequest) {
-    return this.invitations.createCreator(requireAuth(req).user.id);
+  create(@Req() req: AuthedRequest, @Body() body: unknown) {
+    // Le propriétaire sait qui il invite : le pseudo Plato est obligatoire et sera imposé.
+    const { platoUsername } = parseBody(createSchema, body);
+    return this.invitations.createCreator(requireAuth(req).user.id, platoUsername);
   }
 
   @Get()

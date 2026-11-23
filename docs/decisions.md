@@ -1,4 +1,4 @@
-# Décisions techniques
+﻿# Décisions techniques
 
 Chaque décision est numérotée. Une décision remplacée n'est pas supprimée : on l'annote.
 
@@ -165,6 +165,7 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Un rôle de plateforme de plus** : `GROUP_CREATOR` (affiché « super admin ») à côté de `PLATFORM_OWNER` et `MEMBER`. Il donne un seul droit : créer des groupes. Les droits dans un groupe restent portés par l'appartenance (D14) : un super admin n'a aucun accès au groupe d'un autre super admin.
 - **Invitation sans groupe** : `groupId` et `groupRole` sont tous deux vides (contrainte `CHECK` en base : jamais l'un sans l'autre). Routes du propriétaire : `POST`, `GET` et `DELETE /creator-invitations`. Le lien suit les règles de D13 (7 jours, un usage, jeton haché, montré une fois). Un compte déjà connecté peut l'utiliser (`POST /invitations/join`) et devient alors super admin ; le propriétaire et un super admin déjà validé sont refusés (409), sans consommer le lien.
 - **Plafond** : 5 groupes par super admin (`MAX_GROUPS_PER_CREATOR`), vérifié dans la transaction avec un verrou sur la ligne du compte : des créations simultanées ne le dépassent pas (testé). C'est le garde-fou contre l'abus d'un compte validé.
+- **Pseudo Plato imposé** (PR 17) : le propriétaire indique le pseudo de la personne invitée, obligatoire pour un super admin et facultatif pour un admin. Il est imposé à la création du compte (le serveur refuse tout autre pseudo, casse ignorée) ; un compte déjà connecté ne peut utiliser un lien nominatif que si son pseudo Plato est le même (403 sinon, lien non consommé). La page du lien le demande à POST /invitations/preview (en POST : le jeton ne passe jamais dans une adresse), qui répond comme ccept à un jeton inconnu, expiré ou utilisé. Le pseudo apparaît dans la liste des invitations en attente. Le pseudo ne protège pas un lien qui fuit : le jeton reste la protection.
 - **Assistance conservée** : le propriétaire peut toujours réinviter un super admin dans un groupe existant (D14), par exemple si son créateur a perdu son compte.
 - **Interface** : le propriétaire invite depuis l'onglet Moi, le super admin crée ses groupes et invite ses admins depuis l'onglet Groupe, et la page `/invitation/<jeton>` crée le compte (ou rejoint avec le compte connecté).
 - **Garde-fous** : `route-policy.test.ts` vérifie que `POST /groups` exige `GROUP_CREATOR` et que les routes `/creator-invitations` exigent le propriétaire.

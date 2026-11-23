@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState, type FormEvent } from 'react';
 import { useInvitations } from '../api/queries';
 import { copyText } from '../lib/chat';
 import { ConfirmButton } from './ConfirmButton';
@@ -21,14 +21,18 @@ export function InvitationManager({
   title,
   createLabel,
   intro,
+  pseudoRequired = false,
 }: {
   groupId?: string;
   title: string;
   createLabel: string;
   intro: string;
+  /** Super admins : le pseudo Plato de la personne invitée est obligatoire (il lui sera imposé). */
+  pseudoRequired?: boolean;
 }) {
   const { list, create, revoke } = useInvitations(groupId);
   const [copied, setCopied] = useState<boolean | null>(null);
+  const [pseudo, setPseudo] = useState('');
   const created = create.data;
   const link = created?.url;
 
@@ -39,17 +43,37 @@ export function InvitationManager({
       </h2>
       <p className="hint">{intro}</p>
 
-      <button
-        type="button"
-        className="btn btn-accent"
-        disabled={create.isPending}
-        onClick={() => {
+      <form
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
           setCopied(null);
-          create.mutate();
+          create.mutate(pseudo.trim() === '' ? undefined : pseudo.trim(), {
+            onSuccess: () => setPseudo(''),
+          });
         }}
       >
-        {createLabel}
-      </button>
+        <div className="field">
+          <label htmlFor="invite-pseudo">
+            Pseudo Plato de la personne{pseudoRequired ? '' : ' (facultatif)'}
+          </label>
+          <input
+            id="invite-pseudo"
+            className="input"
+            value={pseudo}
+            onChange={(e) => setPseudo(e.target.value)}
+            autoCapitalize="none"
+            spellCheck={false}
+            maxLength={64}
+            required={pseudoRequired}
+          />
+          <p className="hint">
+            Il sera imposé à la création du compte : seule cette personne peut utiliser le lien.
+          </p>
+        </div>
+        <button type="submit" className="btn btn-accent" disabled={create.isPending}>
+          {createLabel}
+        </button>
+      </form>
       <ErrorNote error={create.error} />
 
       {created && link && (
@@ -80,7 +104,8 @@ export function InvitationManager({
           <ul>
             {list.data.map((inv) => (
               <li key={inv.id} className="player-row">
-                <span className="player-name">Expire dans {daysLeft(inv.expiresAt)}</span>
+                <span className="player-name">{inv.platoUsername ?? 'Pseudo libre'}</span>
+                <span className="muted">Expire dans {daysLeft(inv.expiresAt)}</span>
                 <ConfirmButton
                   confirmLabel="Annuler le lien"
                   onConfirm={() => revoke.mutate(inv.id)}
