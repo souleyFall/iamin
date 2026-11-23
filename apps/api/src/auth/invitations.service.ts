@@ -17,8 +17,9 @@ const INVALID_INVITATION = 'Invitation invalide ou expirée';
 
 export interface CreatedInvitation {
   id: string;
-  groupId: string;
-  groupRole: GroupRole;
+  /** `null` pour l'invitation d'un super admin (créateur de groupes), qui n'a pas encore de groupe. */
+  groupId: string | null;
+  groupRole: GroupRole | null;
   expiresAt: Date;
   /** Jeton en clair : montré une seule fois, introuvable ensuite (seule son empreinte est stockée). */
   token: string;
@@ -40,7 +41,7 @@ export class InvitationsService {
    * `db` permet de l'inclure dans une transaction (création d'un groupe + invitation).
    */
   async create(
-    input: { groupId: string; groupRole: GroupRole; createdById: string },
+    input: { groupId: string | null; groupRole: GroupRole | null; createdById: string },
     db: Prisma.TransactionClient = this.prisma,
     now = new Date(),
   ): Promise<CreatedInvitation> {
@@ -57,6 +58,28 @@ export class InvitationsService {
       token,
       url: `${this.config.webOrigin}/invitation/${token}`,
     };
+  }
+
+  /** Le propriétaire invite un super admin : une invitation sans groupe, qui donne le droit d'en créer. */
+  createCreator(createdById: string): Promise<CreatedInvitation> {
+    return this.create({ groupId: null, groupRole: null, createdById });
+  }
+
+  /** Invitations de super admins en attente (jamais leurs jetons). */
+  listPendingCreators(now = new Date()) {
+    return this.prisma.invitation.findMany({
+      where: { groupId: null, usedAt: null, expiresAt: { gt: now } },
+      select: { id: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Annule une invitation de super admin qui n'a pas encore servi. */
+  async revokeCreator(id: string): Promise<void> {
+    const { count } = await this.prisma.invitation.deleteMany({
+      where: { id, groupId: null, usedAt: null },
+    });
+    if (count === 0) throw new NotFoundException('Invitation introuvable');
   }
 
   /** Invitations en attente d'un groupe (jamais leurs jetons). */
@@ -118,12 +141,15 @@ export class InvitationsService {
             username: input.username,
             platoUsername: input.platoUsername,
             passwordHash,
-            role: Role.MEMBER,
+            // Sans groupe : invitation d'un super admin, qui crée ensuite ses propres groupes.
+            role: invitation.groupId === null ? Role.GROUP_CREATOR : Role.MEMBER,
           },
         });
-        await tx.groupMember.create({
-          data: { groupId: invitation.groupId, userId: created.id, role: invitation.groupRole },
-        });
+        if (invitation.groupId !== null && invitation.groupRole !== null) {
+          await tx.groupMember.create({
+            data: { groupId: invitation.groupId, userId: created.id, role: invitation.groupRole },
+          });
+        }
         await tx.invitation.update({
           where: { id: invitation.id },
           data: { usedById: created.id },
@@ -144,14 +170,25 @@ export class InvitationsService {
    * Un compte déjà connecté utilise une invitation pour rejoindre un autre groupe.
    * Refusé s'il en fait déjà partie (l'invitation n'est alors pas consommée).
    */
-  async join(userId: string, token: string, now = new Date()): Promise<{ groupId: string }> {
+  async join(userId: string, token: string, now = new Date()): Promise<{ groupId: string | null }> {
     const invitation = await this.findUsable(token, now);
     try {
       await this.prisma.$transaction(async (tx) => {
         await this.claim(tx, invitation.id, now);
-        await tx.groupMember.create({
-          data: { groupId: invitation.groupId, userId, role: invitation.groupRole },
-        });
+        if (invitation.groupId === null || invitation.groupRole === null) {
+          // Invitation de super admin : un compte « membre » obtient le droit de créer des groupes.
+          // Le propriétaire (ou un super admin déjà validé) n'a rien à gagner : refusé, et l'annulation
+          // de la transaction laisse l'invitation intacte.
+          const promoted = await tx.user.updateMany({
+            where: { id: userId, role: Role.MEMBER },
+            data: { role: Role.GROUP_CREATOR },
+          });
+          if (promoted.count !== 1) throw new ConflictException('Tu peux déjà créer des groupes');
+        } else {
+          await tx.groupMember.create({
+            data: { groupId: invitation.groupId, userId, role: invitation.groupRole },
+          });
+        }
         await tx.invitation.update({ where: { id: invitation.id }, data: { usedById: userId } });
       });
     } catch (error) {

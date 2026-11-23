@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
-import type { DrawView, GroupDetail, GroupSummary, Tournament, TournamentSummary } from './types';
+import type {
+  CreatedInvitation,
+  DrawView,
+  GroupDetail,
+  GroupSummary,
+  PendingInvitation,
+  Tournament,
+  TournamentSummary,
+} from './types';
 
 /** Les écrans d'un tournoi se rafraîchissent seuls : un autre admin peut avoir changé quelque chose. */
 const REFRESH_MS = 5_000;
@@ -17,6 +25,39 @@ export const keys = {
 };
 
 export const tournamentPath = (g: string, t: string) => `/groups/${g}/tournaments/${t}`;
+
+/**
+ * Invitations en attente et création d'un lien. `groupId` désigne les invitations d'admins d'un
+ * groupe (super admin du groupe) ; sans `groupId`, les invitations de super admins (propriétaire).
+ * Le lien d'une invitation n'est lisible qu'à sa création : la liste ne le renvoie jamais.
+ */
+export function useInvitations(groupId?: string) {
+  const base = groupId ? `/groups/${groupId}/invitations` : '/creator-invitations';
+  const key = ['invitations', groupId ?? 'creators'] as const;
+  const client = useQueryClient();
+  const refresh = () => client.invalidateQueries({ queryKey: key });
+  return {
+    list: useQuery({ queryKey: key, queryFn: () => api<PendingInvitation[]>('GET', base) }),
+    create: useMutation({
+      mutationFn: () => api<CreatedInvitation>('POST', base, groupId ? {} : undefined),
+      onSuccess: refresh,
+    }),
+    revoke: useMutation({
+      mutationFn: (id: string) => api<void>('DELETE', `${base}/${id}`),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+/** Un super admin crée un groupe dont il devient super admin. */
+export function useCreateGroup() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api<{ group: { id: string; name: string } }>('POST', '/groups', { name }),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.groups }),
+  });
+}
 
 export function useGroups() {
   return useQuery({ queryKey: keys.groups, queryFn: () => api<GroupSummary[]>('GET', '/groups') });

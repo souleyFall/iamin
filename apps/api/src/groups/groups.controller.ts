@@ -37,8 +37,8 @@ export class GroupsController {
     @Inject(InvitationsService) private readonly invitations: InvitationsService,
   ) {}
 
-  /** Le propriétaire crée un groupe ; la réponse contient le lien d'invitation de son créateur. */
-  @Roles(Role.PLATFORM_OWNER)
+  /** Un super admin crée un groupe dont il devient super admin. Le propriétaire ne crée pas de groupe. */
+  @Roles(Role.GROUP_CREATOR)
   @Post()
   create(@Req() req: GroupRequest, @Body() body: unknown) {
     const { name } = parseBody(createSchema, body);

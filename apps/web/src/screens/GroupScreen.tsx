@@ -1,9 +1,14 @@
+import { Link } from 'react-router-dom';
 import { useGroup } from '../api/queries';
+import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
+import { Icon } from '../components/Icon';
+import { InvitationManager } from '../components/InvitationManager';
 import { initialOf } from '../lib/labels';
 import { useCurrentGroup } from '../groups/current';
 
 export function GroupScreen() {
+  const { user } = useAuth();
   const { current } = useCurrentGroup();
   const group = useGroup(current?.myRole === null ? undefined : current?.id);
 
@@ -15,7 +20,11 @@ export function GroupScreen() {
         </h1>
       </header>
       <div className="page">
-        {!current && <p className="muted">Aucun groupe.</p>}
+        {!current && (
+          <p className="muted">
+            {user?.role === 'GROUP_CREATOR' ? 'Tu n’as pas encore de groupe.' : 'Aucun groupe.'}
+          </p>
+        )}
         {current && (
           <p>
             <b style={{ fontSize: 18 }}>{current.name}</b>
@@ -37,10 +46,21 @@ export function GroupScreen() {
             </li>
           ))}
         </ul>
-        <p className="hint">
-          Les invitations d’admins se gèrent pour l’instant par l’API ; l’écran arrive dans une
-          prochaine version.
-        </p>
+        {current?.myRole === 'SUPER_ADMIN' && (
+          <InvitationManager
+            key={current.id}
+            groupId={current.id}
+            title="Inviter un admin"
+            createLabel="Créer un lien d’invitation"
+            intro="Un admin gère les tournois du groupe. Envoie-lui le lien : il crée son compte, ou rejoint le groupe s’il en a déjà un."
+          />
+        )}
+        {user?.role === 'GROUP_CREATOR' && (
+          <Link className="key key-wide" to="/groupe/nouveau">
+            <Icon name="plus" stroke={2.25} />
+            Créer un groupe
+          </Link>
+        )}
       </div>
     </>
   );

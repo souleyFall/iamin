@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
 import { AuthGuard, OriginGuard, RolesGuard } from './auth/guards';
+import { CreatorInvitationsController } from './auth/creator-invitations.controller';
 import { InvitationsController } from './auth/invitations.controller';
 import { InvitationsService } from './auth/invitations.service';
 import { ResetService } from './auth/reset.service';
@@ -47,6 +48,7 @@ export class AppModule {
         HealthController,
         AuthController,
         InvitationsController,
+        CreatorInvitationsController,
         TicketsController,
         GroupsController,
         TournamentsController,

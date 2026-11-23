@@ -16,7 +16,8 @@ datasource db {
 /// Rôle sur la plateforme. Le rôle dans un groupe est porté par GroupMember : un compte peut
 /// appartenir à plusieurs groupes, avec un rôle différent dans chacun.
 enum Role {
-  PLATFORM_OWNER // le propriétaire de la plateforme
+  PLATFORM_OWNER // le propriétaire de la plateforme : valide les super admins, traite les tickets
+  GROUP_CREATOR // « super admin » : invité par le propriétaire, seul à pouvoir créer des groupes
   MEMBER // tout autre compte : ses droits viennent de ses appartenances à des groupes
 }
 
@@ -192,10 +193,12 @@ model Invitation {
   id          String    @id @default(uuid()) @db.Uuid
   /// SHA-256 du jeton du lien d'invitation. Le jeton lui-même n'est montré qu'une fois.
   tokenHash   String    @unique
-  /// Groupe que la personne invitée rejoint, et rôle qu'elle y recevra.
-  groupId     String    @db.Uuid
-  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupRole   GroupRole
+  /// Groupe que la personne invitée rejoint, et rôle qu'elle y recevra. Les deux sont absents
+  /// ensemble pour l'invitation d'un super admin (GROUP_CREATOR) faite par le propriétaire
+  /// (contrainte CHECK dans la migration).
+  groupId     String?    @db.Uuid
+  group       Group?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupRole   GroupRole?
   createdById String    @db.Uuid
   createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())

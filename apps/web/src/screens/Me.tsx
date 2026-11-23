@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/session';
 import { useTheme } from '../lib/theme';
 
@@ -21,7 +21,13 @@ export function Me() {
           </p>
           <p className="muted">Pseudo Plato : {user?.platoUsername}</p>
           {user?.role === 'PLATFORM_OWNER' && <span className="tag tag-live">PROPRIÉTAIRE</span>}
+          {user?.role === 'GROUP_CREATOR' && <span className="tag tag-live">SUPER ADMIN</span>}
         </div>
+        {user?.role === 'PLATFORM_OWNER' && (
+          <Link className="btn btn-accent" to="/super-admins">
+            Inviter un super admin
+          </Link>
+        )}
         <div className="field">
           <span className="section-title" style={{ fontSize: 20 }}>
             Thème

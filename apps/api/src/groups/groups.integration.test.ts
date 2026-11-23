@@ -6,6 +6,7 @@
 import { GroupRole, Role } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { sha256 } from '../auth/crypto';
+import { MAX_GROUPS_PER_CREATOR } from './groups.service';
 import {
   Client,
   createUser,
@@ -26,7 +27,13 @@ const PASSWORD = randomPassword();
 
 interface Created {
   group: { id: string; name: string };
-  invitation: { id: string; token: string; url: string; groupRole: string; groupId: string };
+  invitation: {
+    id: string;
+    token: string;
+    url: string;
+    groupRole: string | null;
+    groupId: string | null;
+  };
 }
 
 describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', () => {
@@ -77,56 +84,173 @@ describe.skipIf(!testDatabaseUrl)('groupes et accès croisé (base réelle)', ()
   }
 
   // -----------------------------------------------------------------------------------------
-  describe('création d’un groupe par le propriétaire', () => {
-    it('crée le groupe et l’invitation de son créateur, dans la même transaction', async () => {
-      await createUser(t.prisma, {
-        username: 'owner',
-        password: PASSWORD,
-        role: Role.PLATFORM_OWNER,
-      });
+  describe('super admins : invités par le propriétaire, seuls à créer des groupes', () => {
+    const owner = () =>
+      createUser(t.prisma, { username: 'owner', password: PASSWORD, role: Role.PLATFORM_OWNER });
+    const creator = (username = 'chef') =>
+      createUser(t.prisma, { username, password: PASSWORD, role: Role.GROUP_CREATOR });
+
+    it('le propriétaire invite un super admin : lien sans groupe, jeton stocké haché', async () => {
+      await owner();
       const c = await loggedIn('owner');
-      const reply = await c.request('POST', '/groups', { name: '  Les Cracks  ' });
+      const reply = await c.request('POST', '/creator-invitations');
       expect(reply.status).toBe(201);
-      const { group, invitation } = reply.body as Created;
-      expect(group.name).toBe('Les Cracks');
-      expect(invitation).toMatchObject({ groupId: group.id, groupRole: 'SUPER_ADMIN' });
-      expect(invitation.url).toBe(`${WEB_ORIGIN}/invitation/${invitation.token}`);
-      const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } });
-      expect(row.tokenHash).toBe(sha256(invitation.token));
+      const inv = reply.body as Created['invitation'];
+      expect(inv).toMatchObject({ groupId: null, groupRole: null });
+      expect(inv.url).toBe(`${WEB_ORIGIN}/invitation/${inv.token}`);
+      const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
+      expect(row.tokenHash).toBe(sha256(inv.token));
+
+      const list = await c.request('GET', '/creator-invitations');
+      expect(list.body).toEqual([expect.objectContaining({ id: inv.id })]);
+      expect(JSON.stringify(list.body)).not.toContain(inv.token);
+      expect((await c.request('DELETE', `/creator-invitations/${inv.id}`)).status).toBe(200);
+      expect((await c.request('DELETE', `/creator-invitations/${inv.id}`)).status).toBe(404);
     });
 
-    it('valide le nom du groupe', async () => {
-      await createUser(t.prisma, {
-        username: 'owner',
-        password: PASSWORD,
-        role: Role.PLATFORM_OWNER,
-      });
-      const c = await loggedIn('owner');
-      for (const name of ['', 'a', 'x'.repeat(61), 'a\nb', 42]) {
-        expect((await c.request('POST', '/groups', { name })).status).toBe(400);
+    it('seul le propriétaire invite des super admins', async () => {
+      await world();
+      await creator();
+      for (const user of ['alice', 'adam', 'chef']) {
+        const c = await loggedIn(user);
+        expect((await c.request('POST', '/creator-invitations')).status).toBe(403);
+        expect((await c.request('GET', '/creator-invitations')).status).toBe(403);
       }
-      expect(await t.prisma.group.count()).toBe(0);
+      expect((await client().request('POST', '/creator-invitations')).status).toBe(401);
+      expect(await t.prisma.invitation.count()).toBe(0);
     });
 
-    it('le créateur invité devient super admin de son groupe, et de lui seul', async () => {
-      await world(); // crée aussi le propriétaire, et deux autres groupes qui ne doivent pas bouger
+    it('le propriétaire n’annule pas, par cette route, l’invitation d’un groupe', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const inv = (await alice.request('POST', `/groups/${a.id}/invitations`, {})).body as {
+        id: string;
+      };
       const owner = await loggedIn('owner');
-      const { group, invitation } = (await owner.request('POST', '/groups', { name: 'Nouveau' }))
-        .body as Created;
+      expect((await owner.request('DELETE', `/creator-invitations/${inv.id}`)).status).toBe(404);
+      expect(await t.prisma.invitation.count({ where: { id: inv.id } })).toBe(1);
+    });
 
+    it('accepter le lien crée un super admin, sans groupe ni appartenance', async () => {
+      await owner();
+      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
+        .body as Created['invitation'];
       const chef = client();
       const accept = await chef.request('POST', '/invitations/accept', {
-        token: invitation.token,
+        token: inv.token,
         username: 'chef',
         password: PASSWORD,
         platoUsername: 'Chef_Plato',
       });
       expect(accept.status).toBe(201);
-      expect(accept.body).toMatchObject({ user: { username: 'chef', role: 'MEMBER' } });
+      expect(accept.body).toMatchObject({ user: { username: 'chef', role: 'GROUP_CREATOR' } });
       chef.csrfToken = (accept.body as { csrfToken: string }).csrfToken;
+      expect((await chef.request('GET', '/groups')).body).toEqual([]);
+      expect(await t.prisma.groupMember.count()).toBe(0);
+      // Le lien ne sert qu'une fois.
+      expect(
+        (
+          await client().request('POST', '/invitations/accept', {
+            token: inv.token,
+            username: 'autre',
+            password: PASSWORD,
+            platoUsername: 'Autre',
+          })
+        ).status,
+      ).toBe(400);
+    });
+
+    it('un compte membre qui utilise le lien (join) devient super admin', async () => {
+      const { a } = await world();
+      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
+        .body as Created['invitation'];
+      const alice = await loggedIn('alice');
+      const joined = await alice.request('POST', '/invitations/join', { token: inv.token });
+      expect(joined.status).toBe(200);
+      expect(joined.body).toEqual({ groupId: null });
+      const user = await t.prisma.user.findUniqueOrThrow({ where: { username: 'alice' } });
+      expect(user.role).toBe('GROUP_CREATOR');
+      // Ses appartenances restent celles qu'elle avait.
+      expect(await t.prisma.groupMember.count({ where: { userId: user.id, groupId: a.id } })).toBe(
+        1,
+      );
+    });
+
+    it('« join » refuse un super admin ou le propriétaire, sans consommer le lien', async () => {
+      await owner();
+      await creator();
+      const inv = (await (await loggedIn('owner')).request('POST', '/creator-invitations'))
+        .body as Created['invitation'];
+      for (const user of ['chef', 'owner']) {
+        const c = await loggedIn(user);
+        expect((await c.request('POST', '/invitations/join', { token: inv.token })).status).toBe(
+          409,
+        );
+      }
+      const row = await t.prisma.invitation.findUniqueOrThrow({ where: { id: inv.id } });
+      expect(row.usedAt).toBeNull();
+    });
+
+    it('un super admin crée un groupe et en devient le super admin, lui seul', async () => {
+      await world(); // deux autres groupes qui ne doivent pas bouger
+      await creator();
+      const chef = await loggedIn('chef');
+      const reply = await chef.request('POST', '/groups', { name: '  Les Cracks  ' });
+      expect(reply.status).toBe(201);
+      const { group } = reply.body as Created;
+      expect(group.name).toBe('Les Cracks');
 
       const mine = (await chef.request('GET', '/groups')).body as { id: string; myRole: string }[];
       expect(mine).toEqual([expect.objectContaining({ id: group.id, myRole: 'SUPER_ADMIN' })]);
+      expect(await t.prisma.group.count()).toBe(3);
+      // Il invite ensuite ses admins, mais jamais un autre super admin de groupe.
+      expect((await chef.request('POST', `/groups/${group.id}/invitations`, {})).status).toBe(201);
+    });
+
+    it('un super admin peut avoir plusieurs groupes, dans la limite du plafond', async () => {
+      const chef = await creator();
+      const c = await loggedIn('chef');
+      for (let i = 1; i <= MAX_GROUPS_PER_CREATOR; i++) {
+        expect((await c.request('POST', '/groups', { name: `Groupe ${i}` })).status).toBe(201);
+      }
+      expect((await c.request('POST', '/groups', { name: 'De trop' })).status).toBe(409);
+      expect(await t.prisma.groupMember.count({ where: { userId: chef.id } })).toBe(
+        MAX_GROUPS_PER_CREATOR,
+      );
+    });
+
+    it('des créations simultanées ne dépassent pas le plafond', async () => {
+      const chef = await creator();
+      const c = await loggedIn('chef');
+      const replies = await Promise.all(
+        Array.from({ length: MAX_GROUPS_PER_CREATOR + 3 }, (_, i) =>
+          c.request('POST', '/groups', { name: `Groupe ${i}` }),
+        ),
+      );
+      expect(replies.filter((r) => r.status === 201)).toHaveLength(MAX_GROUPS_PER_CREATOR);
+      expect(await t.prisma.groupMember.count({ where: { userId: chef.id } })).toBe(
+        MAX_GROUPS_PER_CREATOR,
+      );
+    });
+
+    it('ni le propriétaire, ni un admin, ni un compte sans groupe ne créent de groupe', async () => {
+      await world();
+      await createUser(t.prisma, { username: 'seul', password: PASSWORD, role: Role.MEMBER });
+      for (const user of ['owner', 'alice', 'adam', 'seul']) {
+        const c = await loggedIn(user);
+        expect((await c.request('POST', '/groups', { name: 'Pirate' })).status).toBe(403);
+      }
+      expect((await client().request('POST', '/groups', { name: 'Pirate' })).status).toBe(401);
+      expect(await t.prisma.group.count()).toBe(2);
+    });
+
+    it('valide le nom du groupe', async () => {
+      await creator();
+      const c = await loggedIn('chef');
+      for (const name of ['', 'a', 'x'.repeat(61), 'a\nb', 42]) {
+        expect((await c.request('POST', '/groups', { name })).status).toBe(400);
+      }
+      expect(await t.prisma.group.count()).toBe(0);
     });
   });
 

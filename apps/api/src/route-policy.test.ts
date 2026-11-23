@@ -3,7 +3,7 @@ import { RequestMethod } from '@nestjs/common';
 import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { describe, expect, it } from 'vitest';
 import { AppModule } from './app.module';
-import { IS_PUBLIC } from './auth/guards';
+import { IS_PUBLIC, ROLES } from './auth/guards';
 import type { AppConfig } from './config';
 import { GROUP_ACCESS, GroupGuard } from './groups/group.guard';
 
@@ -33,6 +33,8 @@ interface Route {
   hasGroupGuard: boolean;
   hasGroupAccess: boolean;
   hasThrottle: boolean;
+  /** Rôles de plateforme exigés par `@Roles(...)` (vide : tout compte connecté). */
+  roles: string[];
 }
 
 const join = (...parts: unknown[]): string =>
@@ -69,6 +71,7 @@ function routes(): Route[] {
         hasGroupGuard: guards.includes(GroupGuard),
         hasGroupAccess: meta(GROUP_ACCESS) !== undefined,
         hasThrottle: meta(THROTTLE_LIMIT_KEY) !== undefined,
+        roles: (meta(ROLES) as string[] | undefined) ?? [],
       });
     }
   }
@@ -131,5 +134,13 @@ describe('politique des routes (audit)', () => {
   it('les routes du propriétaire de la plateforme exigent son rôle', () => {
     const tickets = all.filter((r) => r.path.startsWith('/reset-tickets'));
     expect(tickets.length).toBe(3);
+    const owner = [...tickets, ...all.filter((r) => r.path.startsWith('/creator-invitations'))];
+    expect(owner.length).toBe(6);
+    expect(owner.filter((r) => !r.roles.includes('PLATFORM_OWNER')).map((r) => r.id)).toEqual([]);
+  });
+
+  it('seul un super admin (GROUP_CREATOR) crée un groupe : POST /groups exige ce rôle', () => {
+    const create = all.find((r) => r.id === 'POST /groups');
+    expect(create?.roles).toEqual(['GROUP_CREATOR']);
   });
 });

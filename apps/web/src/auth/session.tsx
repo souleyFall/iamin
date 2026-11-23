@@ -8,6 +8,15 @@ interface Auth {
   user: User | null | undefined;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Accepte une invitation avec un nouveau compte : le crée et ouvre la session. */
+  accept: (input: {
+    token: string;
+    username: string;
+    password: string;
+    platoUsername: string;
+  }) => Promise<void>;
+  /** Relit le compte (son rôle a pu changer : invitation de super admin utilisée en étant connecté). */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<Auth | null>(null);
@@ -42,6 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       client.setQueryData(ME, session);
     },
   });
+  const acceptMutation = useMutation({
+    mutationFn: (v: { token: string; username: string; password: string; platoUsername: string }) =>
+      api<Session>('POST', '/invitations/accept', v),
+    onSuccess: (session) => {
+      setCsrfToken(session.csrfToken);
+      client.clear();
+      client.setQueryData(ME, session);
+    },
+  });
   const logoutMutation = useMutation({
     mutationFn: () => api<void>('POST', '/auth/logout'),
     onSettled: () => {
@@ -60,8 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async () => {
         await logoutMutation.mutateAsync().catch(() => undefined);
       },
+      accept: async (input) => {
+        await acceptMutation.mutateAsync(input);
+      },
+      refresh: async () => {
+        await client.invalidateQueries({ queryKey: ME });
+      },
     }),
-    [me.isPending, me.data, loginMutation, logoutMutation],
+    [me.isPending, me.data, loginMutation, logoutMutation, acceptMutation, client],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

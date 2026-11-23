@@ -44,7 +44,7 @@ La page publique reçoit un événement à chaque changement (`Server-Sent Event
 
 ## D8. Rôles et invitations
 
-Trois rôles : **propriétaire** de la plateforme (invite les créateurs de groupe, traite les tickets), **super admin de groupe** (invite ses admins, reprend le relais), **admin**. L'inscription d'un compte se fait sur invitation. Le mot de passe oublié passe par un ticket que reçoit le propriétaire, qui vérifie l'identité via Plato avant de transmettre un lien de réinitialisation à usage unique et de courte durée.
+Trois rôles : **propriétaire** de la plateforme (valide les super admins, traite les tickets), **super admin** (crée ses groupes, y invite ses admins, reprend le relais), **admin**. Depuis [D22](#d22-le-super-admin-crée-ses-groupes), le propriétaire ne crée plus de groupe : il invite seulement des super admins. L'inscription d'un compte se fait sur invitation. Le mot de passe oublié passe par un ticket que reçoit le propriétaire, qui vérifie l'identité via Plato avant de transmettre un lien de réinitialisation à usage unique et de courte durée.
 
 ## D9. Joueurs sans compte
 
@@ -71,7 +71,7 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Mots de passe** : argon2id (19 Mio, 2 itérations, 1 voie, valeurs OWASP), 12 caractères au minimum sans règle de composition.
 - **CSRF** : deux couches. L'en-tête `Origin`, s'il est présent, doit être celui de l'interface ; toute écriture authentifiée doit renvoyer le jeton propre à la session (`x-csrf-token`).
 - **Pas d'e-mail dans la version 0.1.0** : minimisation des données (RGPD) et aucun service d'envoi à exploiter. Le contact passe par Plato : le propriétaire reçoit un ticket, vérifie l'identité via le pseudo Plato, puis transmet un lien de réinitialisation (une heure, usage unique).
-- **Invitations** : lien à usage unique de 7 jours, jeton stocké haché. Le propriétaire invite des créateurs de groupe ; ceux-ci inviteront leurs admins avec les groupes (PR 7).
+- **Invitations** : lien à usage unique de 7 jours, jeton stocké haché. Le propriétaire invite des super admins (D22) ; ceux-ci invitent les admins de leurs groupes (PR 7).
 - **Limites de débit** : par adresse IP sur les routes sensibles, et par compte (10 échecs en 15 minutes) pour les attaques réparties. Compromis assumé : on peut bloquer un compte 15 minutes en s'y trompant exprès. État en mémoire, donc une seule instance d'API (à revoir sinon).
 - **Premier compte** : le propriétaire se crée en ligne de commande (`create-owner`), mot de passe par variable d'environnement, jamais par argument.
 
@@ -80,7 +80,7 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Deux niveaux de rôle** : sur la plateforme (`PLATFORM_OWNER` ou `MEMBER`) et dans chaque groupe (`SUPER_ADMIN` ou `ADMIN`, table `GroupMember`). Un compte peut être super admin d'un groupe et simple admin d'un autre. Cela remplace les rôles globaux de D13 (migration cassante, sans conséquence avant la mise en ligne).
 - **Seule porte d'entrée vers les données d'un groupe : `GroupGuard`.** Le groupe est lu dans le chemin (`/groups/:groupId/…`), jamais dans le corps de la requête, et l'appartenance est vérifiée à chaque appel : retirer un membre lui ferme l'accès immédiatement, sans attendre la fin de sa session.
 - **404 uniforme** : un compte qui n'est pas membre reçoit exactement la même réponse que pour un groupe inexistant ou un identifiant mal formé. Impossible de deviner quels groupes existent. Un membre dont le rôle ne suffit pas reçoit 403.
-- **Le propriétaire de la plateforme** crée les groupes, voit la liste de tous et peut réinviter un super admin (assistance), mais ne lit pas les données internes des groupes : `allowOwner` est un choix explicite par route.
+- **Le propriétaire de la plateforme** voit la liste de tous les groupes et peut réinviter un super admin dans un groupe (assistance), mais ne lit pas les données internes des groupes : `allowOwner` est un choix explicite par route. ~~Il crée les groupes~~ : remplacé par D22.
 - **Personne ne s'attribue un rôle supérieur** : un super admin n'invite que des admins ; seul le propriétaire invite un super admin. Une invitation vise un groupe et un rôle précis, et ne sert qu'une fois.
 - **Un compte existant rejoint un autre groupe** avec `POST /invitations/join` (session ouverte), sans créer de second compte.
 - **Règle pour les PR suivantes** : toute route qui touche aux données d'un groupe (tournois, inscriptions, matchs…) passe par `GroupGuard` et s'accompagne d'un test d'accès croisé.
@@ -158,3 +158,13 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Sauvegardes** : `deploy/backup.sh` (`pg_dump` compressé, fichier temporaire puis renommé, `umask 077`, 30 jours de conservation) et `deploy/restore.sh` (arrête l'API, restaure, relance, demande confirmation). Restauration essayée pour de vrai : 1 compte, 0 après suppression, 1 après restauration. Copie hors du serveur et chiffrement : à la charge de l'exploitant, documentés dans le README.
 - **CI** : un job construit les deux images, valide le Compose de production et la syntaxe des scripts. Dependabot suit désormais aussi les images de base (Node, Caddy).
 - **Hors périmètre** : choix de l'hébergeur et du nom de domaine, supervision, sauvegarde automatique hors serveur, mises à jour sans interruption (un `up -d --build` coupe quelques secondes).
+
+## D22. Le super admin crée ses groupes
+
+- **Qui fait quoi** : le propriétaire de la plateforme ne fait que **valider les super admins** en leur envoyant un lien d'invitation. Seul un super admin crée un groupe, dont il devient le super admin ; il invite ensuite les admins. Le propriétaire ne crée plus de groupe (`POST /groups` lui répond 403).
+- **Un rôle de plateforme de plus** : `GROUP_CREATOR` (affiché « super admin ») à côté de `PLATFORM_OWNER` et `MEMBER`. Il donne un seul droit : créer des groupes. Les droits dans un groupe restent portés par l'appartenance (D14) : un super admin n'a aucun accès au groupe d'un autre super admin.
+- **Invitation sans groupe** : `groupId` et `groupRole` sont tous deux vides (contrainte `CHECK` en base : jamais l'un sans l'autre). Routes du propriétaire : `POST`, `GET` et `DELETE /creator-invitations`. Le lien suit les règles de D13 (7 jours, un usage, jeton haché, montré une fois). Un compte déjà connecté peut l'utiliser (`POST /invitations/join`) et devient alors super admin ; le propriétaire et un super admin déjà validé sont refusés (409), sans consommer le lien.
+- **Plafond** : 5 groupes par super admin (`MAX_GROUPS_PER_CREATOR`), vérifié dans la transaction avec un verrou sur la ligne du compte : des créations simultanées ne le dépassent pas (testé). C'est le garde-fou contre l'abus d'un compte validé.
+- **Assistance conservée** : le propriétaire peut toujours réinviter un super admin dans un groupe existant (D14), par exemple si son créateur a perdu son compte.
+- **Interface** : le propriétaire invite depuis l'onglet Moi, le super admin crée ses groupes et invite ses admins depuis l'onglet Groupe, et la page `/invitation/<jeton>` crée le compte (ou rejoint avec le compte connecté).
+- **Garde-fous** : `route-policy.test.ts` vérifie que `POST /groups` exige `GROUP_CREATOR` et que les routes `/creator-invitations` exigent le propriétaire.

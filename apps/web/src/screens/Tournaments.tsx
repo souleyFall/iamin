@@ -73,7 +73,22 @@ export function Tournaments() {
           </p>
         )}
 
-        {!loading && !current && (
+        {!loading && !current && user?.role === 'GROUP_CREATOR' && (
+          <>
+            <p className="card">Tu es super admin : crée ton premier groupe pour commencer.</p>
+            <Link className="key key-wide" to="/groupe/nouveau">
+              <Icon name="plus" stroke={2.25} />
+              Créer un groupe
+            </Link>
+          </>
+        )}
+        {!loading && !current && user?.role === 'PLATFORM_OWNER' && (
+          <p className="card">
+            Aucun groupe pour l’instant. Invite un super admin depuis l’onglet Moi : c’est lui qui
+            crée les groupes.
+          </p>
+        )}
+        {!loading && !current && user?.role === 'MEMBER' && (
           <p className="card">
             Tu n’es membre d’aucun groupe. Demande une invitation à un super admin de ton groupe.
           </p>
