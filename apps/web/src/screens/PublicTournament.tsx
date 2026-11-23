@@ -12,10 +12,11 @@ import {
 } from '../api/public';
 import { isBracketView, type PublicView } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
+import { LanguagePicker } from '../components/LanguagePicker';
 import { ErrorNote } from '../components/ErrorNote';
 import { defaultRound, MatchContent, RoundTabs, roundsOf } from '../components/Rounds';
 import { StandingsTable } from '../components/StandingsTable';
-import { useI18n } from '../lib/i18n';
+import { I18nProvider, useI18n } from '../lib/i18n';
 import type { MessageKey } from '../lib/i18n/messages';
 import { FORMAT_KEY, STATUS_CLASS, STATUS_KEY, initialOf } from '../lib/labels';
 import { clearPlayerToken, readPlayerToken } from '../lib/player-token';
@@ -215,7 +216,37 @@ export function PublicTournament() {
     );
   }
 
-  const v = view.data;
+  return (
+    // La page prend la langue du tournoi (choisie par l'admin), sauf si le joueur a choisi la sienne.
+    <I18nProvider defaultLocale={view.data.language}>
+      <PublicContent
+        slug={slug}
+        v={view.data}
+        live={live}
+        token={token}
+        onToken={setToken}
+        onGone={forget}
+      />
+    </I18nProvider>
+  );
+}
+
+function PublicContent({
+  slug,
+  v,
+  live,
+  token,
+  onToken,
+  onGone,
+}: {
+  slug: string;
+  v: PublicView;
+  live: boolean;
+  token: string | null;
+  onToken: (token: string) => void;
+  onGone: () => void;
+}) {
+  const { t } = useI18n();
   const players = v.drawn ? [] : v.players;
   const accepted = players.filter((p) => p.status === 'ACCEPTED');
   const waitlist = players.filter((p) => p.status === 'WAITLIST');
@@ -240,9 +271,9 @@ export function PublicTournament() {
 
         <div className="page" style={{ paddingTop: 8 }}>
           {token !== null ? (
-            <MyRegistrationCard slug={slug} token={token} onGone={forget} />
+            <MyRegistrationCard slug={slug} token={token} onGone={onGone} />
           ) : v.registrationOpen ? (
-            <RegisterForm slug={slug} onToken={setToken} />
+            <RegisterForm slug={slug} onToken={onToken} />
           ) : (
             !v.drawn && <p className="card">{t('pub.closed')}</p>
           )}
@@ -284,9 +315,12 @@ export function PublicTournament() {
           </div>
         )}
 
-        <p className="notice-standalone" style={{ marginTop: 'auto', padding: '16px 20px' }}>
-          {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link>
-        </p>
+        <div className="page" style={{ marginTop: 'auto' }}>
+          <LanguagePicker compact />
+          <p className="notice-standalone">
+            {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link>
+          </p>
+        </div>
       </main>
     </div>
   );

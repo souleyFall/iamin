@@ -12,6 +12,7 @@ import {
   Presence,
   RegistrationStatus,
   type TournamentFormat,
+  type TournamentLanguage,
   TournamentStatus,
 } from '@prisma/client';
 import { newToken, sha256 } from '../auth/crypto';
@@ -71,7 +72,13 @@ export class TournamentsService {
   create(
     groupId: string,
     actorId: string,
-    input: { name: string; format: TournamentFormat; capacity: number; forfeitScore?: number },
+    input: {
+      name: string;
+      format: TournamentFormat;
+      capacity: number;
+      forfeitScore?: number;
+      language?: TournamentLanguage;
+    },
   ) {
     assertLeagueSize(input.format, input.capacity);
     return this.prisma.$transaction(async (tx) => {
@@ -127,6 +134,8 @@ export class TournamentsService {
       name?: string;
       capacity?: number;
       forfeitScore?: number;
+      /** Langue de la page des joueurs et du chat : modifiable à tout moment, même après le tirage. */
+      language?: TournamentLanguage;
       status?: typeof TournamentStatus.REGISTRATION | typeof TournamentStatus.CHECK_IN;
     },
   ) {
@@ -276,7 +285,7 @@ export class TournamentsService {
   async publicInfo(slug: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { publicSlug: slug },
-      select: { name: true, format: true, status: true },
+      select: { name: true, format: true, status: true, language: true },
     });
     if (!tournament) throw new NotFoundException(TOURNAMENT_NOT_FOUND);
     return { ...tournament, registrationOpen: tournament.status === TournamentStatus.REGISTRATION };
@@ -444,6 +453,7 @@ const tournamentSelect = {
   status: true,
   publicSlug: true,
   forfeitScore: true,
+  language: true,
   createdAt: true,
   drawnAt: true,
   drawSeed: true,

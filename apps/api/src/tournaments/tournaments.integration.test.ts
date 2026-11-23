@@ -27,6 +27,7 @@ interface Tournament {
   name: string;
   capacity: number;
   status: string;
+  language: string;
   publicSlug: string;
   registrations: { id: string; platoName: string; status: string; presence: string }[];
 }
@@ -170,6 +171,53 @@ describe.skipIf(!testDatabaseUrl)('tournois et inscriptions (base réelle)', () 
       expect((await alice.request('PATCH', path, { status: 'REGISTRATION' })).status).toBe(200);
       expect((await alice.request('PATCH', path, { status: 'FINISHED' })).status).toBe(400);
       expect((await alice.request('PATCH', path, {})).status).toBe(400);
+    });
+    // Langue d'un tournoi : celle de la page des joueurs et du texte du chat (D27).
+    it('un tournoi est en français par défaut ; l’admin choisit la langue à la création', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      expect((await create(alice, a.id)).language).toBe('fr');
+      expect((await create(alice, a.id, { language: 'es' })).language).toBe('es');
+      for (const language of ['de', 'FR', '', 3, null]) {
+        const reply = await alice.request('POST', `/groups/${a.id}/tournaments`, {
+          name: 'Valide',
+          format: 'LEAGUE',
+          capacity: 8,
+          language,
+        });
+        expect(reply.status, JSON.stringify(language)).toBe(400);
+      }
+    });
+
+    it('le détenteur change la langue, même après le tirage ; les autres admins non', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const adam = await loggedIn('adam');
+      const tour = await create(alice, a.id, { format: 'LEAGUE', capacity: 4 });
+      const path = `/groups/${a.id}/tournaments/${tour.id}`;
+      expect((await alice.request('PATCH', path, { language: 'en' })).body).toMatchObject({
+        language: 'en',
+      });
+      expect((await adam.request('PATCH', path, { language: 'es' })).status).toBe(403);
+      expect((await alice.request('PATCH', path, { language: 'klingon' })).status).toBe(400);
+      expect((await detail(alice, a.id, tour.id)).language).toBe('en');
+
+      // La langue ne change que des textes : elle reste modifiable une fois le tirage fait.
+      await t.prisma.tournament.update({
+        where: { id: tour.id },
+        data: { status: 'STARTED', drawnAt: new Date() },
+      });
+      expect((await alice.request('PATCH', path, { language: 'fr' })).status).toBe(200);
+    });
+
+    it('la page publique annonce la langue du tournoi, sans rien révéler d’autre', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const tour = await create(alice, a.id, { language: 'en' });
+      const info = await client().request('GET', `/public/tournaments/${tour.publicSlug}`);
+      expect(info.body).toMatchObject({ language: 'en' });
+      const view = await client().request('GET', `/public/tournaments/${tour.publicSlug}/view`);
+      expect(view.body).toMatchObject({ language: 'en' });
     });
   });
 
@@ -464,6 +512,7 @@ describe.skipIf(!testDatabaseUrl)('tournois et inscriptions (base réelle)', () 
         name: 'Coupe du week-end',
         format: 'ELIMINATION',
         status: 'REGISTRATION',
+        language: 'fr',
         registrationOpen: true,
       });
       expect((await client().request('GET', '/public/tournaments/' + 'x'.repeat(22))).status).toBe(

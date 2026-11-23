@@ -28,6 +28,7 @@ const tournament = (format: Tournament['format'], registrations: Registration[])
   status: 'STARTED',
   publicSlug: 's'.repeat(22),
   forfeitScore: 1,
+  language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
   drawnAt: '2026-11-22T11:00:00Z',
   drawSeed: 'seed',

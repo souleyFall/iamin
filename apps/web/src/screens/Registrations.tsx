@@ -1,14 +1,24 @@
 import { useState, type FormEvent } from 'react';
-import type { Registration } from '../api/types';
+import type { Registration, TournamentLanguage } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { ErrorNote } from '../components/ErrorNote';
 import { copyText } from '../lib/chat';
-import { useI18n } from '../lib/i18n';
+import { LOCALES, useI18n } from '../lib/i18n';
 import { initialOf, isOpenStatus } from '../lib/labels';
 import { useTournamentCtx } from './tournament-context';
 
 /** Le lien à donner aux joueurs : inscription, puis suivi en direct. */
-function ShareLink({ slug }: { slug: string }) {
+function ShareLink({
+  slug,
+  language,
+  canChange,
+  onLanguage,
+}: {
+  slug: string;
+  language: TournamentLanguage;
+  canChange: boolean;
+  onLanguage: (language: TournamentLanguage) => void;
+}) {
   const { t } = useI18n();
   const [copied, setCopied] = useState<boolean | null>(null);
   const url = `${window.location.origin}/t/${slug}`;
@@ -33,6 +43,26 @@ function ShareLink({ slug }: { slug: string }) {
           {t('reg.copyRefused')}
         </p>
       )}
+      <div className="field">
+        <span className="section-title" style={{ fontSize: 18 }}>
+          {t('lang.label')}
+        </span>
+        <div className="segmented" role="group" aria-label={t('lang.label')}>
+          {LOCALES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              lang={l.code}
+              aria-pressed={language === l.code}
+              disabled={!canChange}
+              onClick={() => onLanguage(l.code)}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="hint">{t('lang.hint')}</p>
+      </div>
     </div>
   );
 }
@@ -59,7 +89,12 @@ export function Registrations() {
 
   return (
     <div className="page page-wide desk-grid" style={{ paddingTop: 12 }}>
-      <ShareLink slug={tournament.publicSlug} />
+      <ShareLink
+        slug={tournament.publicSlug}
+        language={tournament.language}
+        canChange={isHolder}
+        onLanguage={(language) => act.mutate({ method: 'PATCH', path: '', body: { language } })}
+      />
 
       <div className="desk-main">
         {!open && <p className="card">{t('reg.frozen')}</p>}

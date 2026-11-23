@@ -49,6 +49,7 @@ export function chatChoices(
         accepted: byStatus('ACCEPTED'),
         waitlist: byStatus('WAITLIST'),
         capacity: tournament.capacity,
+        locale: tournament.language,
       }),
     },
   ];
@@ -62,12 +63,12 @@ export function chatChoices(
       choices.push({
         key: `vs-${round}`,
         label: t('chat.vs', { name }),
-        text: formatBracketRound(resolved, round, names, tournament.name),
+        text: formatBracketRound(resolved, round, names, tournament.name, tournament.language),
       });
       choices.push({
         key: `results-${round}`,
         label: t('chat.results', { name }),
-        text: formatBracketResults(resolved, round, names, tournament.name),
+        text: formatBracketResults(resolved, round, names, tournament.name, tournament.language),
       });
     }
     return choices;
@@ -85,18 +86,25 @@ export function chatChoices(
     choices.push({
       key: `vs-${round}`,
       label: t('chat.vs', { name }),
-      text: formatLeagueRound(league, round, names, tournament.name),
+      text: formatLeagueRound(league, round, names, tournament.name, tournament.language),
     });
     choices.push({
       key: `results-${round}`,
       label: t('chat.results', { name }),
-      text: formatLeagueResults(league, draw.scores, round, names, tournament.name),
+      text: formatLeagueResults(
+        league,
+        draw.scores,
+        round,
+        names,
+        tournament.name,
+        tournament.language,
+      ),
     });
   }
   choices.push({
     key: 'standings',
     label: t('chat.standings'),
-    text: formatStandings(draw.standings, names, tournament.name),
+    text: formatStandings(draw.standings, names, tournament.name, tournament.language),
   });
   return choices;
 }
