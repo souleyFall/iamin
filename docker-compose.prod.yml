@@ -1,0 +1,112 @@
+# Production : un serveur Linux avec Docker, un nom de domaine pointé vers lui, rien d'autre.
+#
+#   cp .env.prod.example .env.prod      # puis remplis-le (voir les commentaires du fichier)
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Seul Caddy (service `web`) écoute sur Internet, en 80 et 443. La base et l'API ne sont
+# joignables que par le réseau interne de Compose. Les migrations s'appliquent à chaque
+# démarrage, avant l'API.
+
+# Nom de projet propre : ne touche jamais à la base du docker-compose.yml de développement.
+name: iamin-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?définis POSTGRES_USER dans .env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définis POSTGRES_PASSWORD dans .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?définis POSTGRES_DB dans .env.prod}
+    volumes:
+      - iamin-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  # Applique les migrations versionnées puis s'arrête. L'API ne démarre qu'après son succès.
+  migrate:
+    build:
+      context: .
+      target: api
+    image: iamin-api:prod
+    command: ['./node_modules/.bin/prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  api:
+    image: iamin-api:prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # L'interface et l'API partagent une seule origine : https://<domaine>.
+      WEB_ORIGIN: https://${SITE_ADDRESS:?définis SITE_ADDRESS dans .env.prod}
+      SESSION_COOKIE_SECURE: 'true'
+      # Un seul proxy (Caddy) devant l'API : les limites de débit voient la vraie adresse du visiteur.
+      TRUST_PROXY: '1'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Système de fichiers en lecture seule, aucun privilège : une faille ne peut rien écrire ni élever ses droits.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  web:
+    build:
+      context: .
+      target: web
+    image: iamin-web:prod
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?définis SITE_ADDRESS dans .env.prod}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      # Certificats HTTPS : à conserver (Let's Encrypt limite le nombre d'émissions).
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+volumes:
+  iamin-db:
+  caddy-data:
+  caddy-config:

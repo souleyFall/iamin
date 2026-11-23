@@ -48,6 +48,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     databaseUrl: testDatabaseUrl,
     webOrigin: WEB_ORIGIN,
     sessionCookieSecure: false,
+    trustProxy: 0,
     ...overrides,
   };
   const moduleRef = await Test.createTestingModule({

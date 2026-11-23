@@ -54,6 +54,17 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | Conservation | Avec le tournoi ; l'auteur devient « inconnu » si son compte est supprimé                                                          |
 | Minimisation | Les actions d'un joueur sans compte n'ont pas d'auteur et ne contiennent que son identifiant d'inscription, supprimé avec sa ligne |
 
+## Traitement 5 : sauvegardes de la base
+
+|              |                                                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Finalité     | Reprendre le service après une panne ou une erreur                                                                                                                                                |
+| Données      | Tout le contenu de la base (comptes admins, pseudos, tournois, journal)                                                                                                                           |
+| Conservation | 30 jours (`BACKUP_KEEP_DAYS`), puis suppression automatique par `deploy/backup.sh`                                                                                                                |
+| Protection   | Dossier `backups/` ignoré par Git, lisible par son propriétaire seul (`umask 077`) ; la copie hors du serveur doit être chiffrée                                                                  |
+| Droits       | Un joueur effacé de la base reste dans les sauvegardes jusqu'à leur suppression, soit 30 jours au plus ; une restauration ne remet jamais une personne effacée en ligne sans nouvelle suppression |
+
 ## Hors dépôt
 
-Les journaux d'accès du serveur web peuvent contenir des adresses IP : durée de conservation à fixer lors du déploiement (PR n°14).
+- **Journaux d'accès du serveur web** : désactivés. Caddy n'écrit que ses erreurs (`deploy/Caddyfile`), donc aucune adresse IP n'est conservée. L'API ne voit l'adresse qu'en mémoire, pour limiter le débit (D21).
+- **Journaux des conteneurs** : rotation par taille (3 fichiers de 10 Mo), sans donnée de requête.

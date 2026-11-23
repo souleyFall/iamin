@@ -9,6 +9,9 @@ import type { AppConfig } from './config';
  */
 export function setupApp(app: INestApplication, config: AppConfig): void {
   (app as NestExpressApplication).disable('x-powered-by');
+  // Adresse du visiteur = celle que le proxy de confiance a vue, jamais un en-tête qu'il envoie
+  // lui-même (sinon n'importe qui contournerait les limites de débit en changeant d'« adresse »).
+  if (config.trustProxy > 0) (app as NestExpressApplication).set('trust proxy', config.trustProxy);
   app.use(helmet());
   app.enableCors({
     origin: config.webOrigin, // une seule origine exacte, jamais `*`

@@ -12,15 +12,19 @@ const config: AppConfig = {
   databaseUrl: 'postgresql://u:p@localhost:5432/db',
   webOrigin: 'http://localhost:5173',
   sessionCookieSecure: false,
+  trustProxy: 0,
 };
 
-async function start(ping: () => Promise<void>): Promise<{ app: INestApplication; url: string }> {
+async function start(
+  ping: () => Promise<void>,
+  cfg: AppConfig = config,
+): Promise<{ app: INestApplication; url: string }> {
   const moduleRef = await Test.createTestingModule({
     controllers: [HealthController],
     providers: [{ provide: PrismaService, useValue: { ping } }],
   }).compile();
   const app = moduleRef.createNestApplication();
-  setupApp(app, config);
+  setupApp(app, cfg);
   await app.listen(0);
   return { app, url: await app.getUrl() };
 }
@@ -86,6 +90,19 @@ describe('API', () => {
       expect(list).not.toContain('x-anything-else');
       expect(allowed.headers.get('access-control-allow-methods')).toContain('DELETE');
     });
+  });
+
+  it('ne fait confiance à aucun proxy par défaut, et à un seul quand on le demande', async () => {
+    // Sans proxy de confiance, un en-tête X-Forwarded-For envoyé par un visiteur est ignoré :
+    // il ne peut pas se faire passer pour une autre adresse et contourner les limites de débit.
+    ({ app } = await start(() => Promise.resolve()));
+    const express = (a: INestApplication) =>
+      a.getHttpAdapter().getInstance() as { get: (name: string) => unknown };
+    expect(express(app).get('trust proxy')).toBeFalsy();
+    await app.close();
+
+    ({ app } = await start(() => Promise.resolve(), { ...config, trustProxy: 1 }));
+    expect(express(app).get('trust proxy')).toBe(1);
   });
 
   it('répond 503 sans détail quand la base est injoignable', async () => {

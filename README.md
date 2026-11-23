@@ -62,6 +62,30 @@ pnpm --filter @iamin/api exec prisma migrate deploy   # avec DATABASE_URL pointa
 pnpm test
 ```
 
+## Mettre en production
+
+Il faut un serveur Linux avec Docker, un nom de domaine qui pointe vers lui (enregistrement DNS) et les ports 80 et 443 ouverts. Voir [D21](docs/decisions.md).
+
+```bash
+cp .env.prod.example .env.prod && chmod 600 .env.prod    # remplis SITE_ADDRESS et POSTGRES_PASSWORD (openssl rand -hex 24)
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+Les migrations s'appliquent toutes seules avant l'API ; Caddy obtient le certificat HTTPS. Créer le compte du propriétaire :
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec -e IAMIN_OWNER_PASSWORD='...' api node dist/scripts/create-owner.js mon-identifiant MonPseudoPlato
+```
+
+Sauvegarder (tous les jours en cron) et restaurer. La copie hors du serveur, chiffrée, est à ta charge :
+
+```bash
+bash deploy/backup.sh
+bash deploy/restore.sh backups/iamin-AAAAMMJJTHHMMSSZ.dump
+```
+
+Mettre à jour : `git pull` puis la commande `up -d --build` ci-dessus (quelques secondes d'interruption).
+
 ## Pour aller plus loin
 
 - Décisions : [docs/decisions.md](docs/decisions.md)
