@@ -124,6 +124,7 @@ describe('politique des routes (audit)', () => {
         'POST /auth/reset',
         'POST /auth/reset-requests',
         'POST /invitations/accept',
+        'POST /invitations/preview',
         'POST /public/tournaments/:slug/registrations',
         // Flux en direct : lu par `@Sse('live')`, qui se déclare comme une route GET.
         'GET /public/tournaments/:slug/live',

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -15,11 +16,16 @@ import { type AuthUser, type CreatedSession, SessionService, toAuthUser } from '
 export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const INVALID_INVITATION = 'Invitation invalide ou expirée';
 
+/** Les pseudos Plato se comparent sans tenir compte de la casse. */
+const samePseudo = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+
 export interface CreatedInvitation {
   id: string;
   /** `null` pour l'invitation d'un super admin (créateur de groupes), qui n'a pas encore de groupe. */
   groupId: string | null;
   groupRole: GroupRole | null;
+  /** Pseudo Plato attendu de la personne invitée, ou `null` si elle le choisit elle-même. */
+  platoUsername: string | null;
   expiresAt: Date;
   /** Jeton en clair : montré une seule fois, introuvable ensuite (seule son empreinte est stockée). */
   token: string;
@@ -41,19 +47,26 @@ export class InvitationsService {
    * `db` permet de l'inclure dans une transaction (création d'un groupe + invitation).
    */
   async create(
-    input: { groupId: string | null; groupRole: GroupRole | null; createdById: string },
+    input: {
+      groupId: string | null;
+      groupRole: GroupRole | null;
+      platoUsername?: string | null;
+      createdById: string;
+    },
     db: Prisma.TransactionClient = this.prisma,
     now = new Date(),
   ): Promise<CreatedInvitation> {
     const token = newToken();
     const expiresAt = new Date(now.getTime() + INVITATION_TTL_MS);
+    const platoUsername = input.platoUsername ?? null;
     const invitation = await db.invitation.create({
-      data: { ...input, tokenHash: sha256(token), expiresAt },
+      data: { ...input, platoUsername, tokenHash: sha256(token), expiresAt },
     });
     return {
       id: invitation.id,
       groupId: input.groupId,
       groupRole: input.groupRole,
+      platoUsername,
       expiresAt,
       token,
       url: `${this.config.webOrigin}/invitation/${token}`,
@@ -61,15 +74,15 @@ export class InvitationsService {
   }
 
   /** Le propriétaire invite un super admin : une invitation sans groupe, qui donne le droit d'en créer. */
-  createCreator(createdById: string): Promise<CreatedInvitation> {
-    return this.create({ groupId: null, groupRole: null, createdById });
+  createCreator(createdById: string, platoUsername: string): Promise<CreatedInvitation> {
+    return this.create({ groupId: null, groupRole: null, platoUsername, createdById });
   }
 
   /** Invitations de super admins en attente (jamais leurs jetons). */
   listPendingCreators(now = new Date()) {
     return this.prisma.invitation.findMany({
       where: { groupId: null, usedAt: null, expiresAt: { gt: now } },
-      select: { id: true, createdAt: true, expiresAt: true },
+      select: { id: true, platoUsername: true, createdAt: true, expiresAt: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -86,7 +99,7 @@ export class InvitationsService {
   listPending(groupId: string, now = new Date()) {
     return this.prisma.invitation.findMany({
       where: { groupId, usedAt: null, expiresAt: { gt: now } },
-      select: { id: true, groupRole: true, createdAt: true, expiresAt: true },
+      select: { id: true, groupRole: true, platoUsername: true, createdAt: true, expiresAt: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -122,6 +135,15 @@ export class InvitationsService {
   }
 
   /**
+   * Ce que la page du lien a besoin de savoir : le pseudo Plato imposé, s'il y en a un. Un jeton
+   * inconnu, expiré ou déjà utilisé reçoit le même refus que pour `accept`.
+   */
+  async preview(token: string, now = new Date()): Promise<{ platoUsername: string | null }> {
+    const invitation = await this.findUsable(token, now);
+    return { platoUsername: invitation.platoUsername };
+  }
+
+  /**
    * Accepte une invitation avec un nouveau compte : crée le compte, l'ajoute au groupe avec le
    * rôle prévu, et ouvre une session. Tout se passe dans une transaction : un identifiant déjà
    * pris ne « brûle » pas l'invitation.
@@ -132,6 +154,14 @@ export class InvitationsService {
     now = new Date(),
   ): Promise<{ user: AuthUser; session: CreatedSession }> {
     const invitation = await this.findUsable(token, now);
+    // Pseudo imposé par celui qui invite : le formulaire le renvoie tel quel, toute autre valeur est
+    // une requête fabriquée.
+    if (
+      invitation.platoUsername !== null &&
+      !samePseudo(invitation.platoUsername, input.platoUsername)
+    ) {
+      throw new BadRequestException('Le pseudo Plato doit être celui de l’invitation');
+    }
     const passwordHash = await hashPassword(input.password);
     try {
       const user = await this.prisma.$transaction(async (tx) => {
@@ -139,7 +169,7 @@ export class InvitationsService {
         const created = await tx.user.create({
           data: {
             username: input.username,
-            platoUsername: input.platoUsername,
+            platoUsername: invitation.platoUsername ?? input.platoUsername,
             passwordHash,
             // Sans groupe : invitation d'un super admin, qui crée ensuite ses propres groupes.
             role: invitation.groupId === null ? Role.GROUP_CREATOR : Role.MEMBER,
@@ -172,6 +202,16 @@ export class InvitationsService {
    */
   async join(userId: string, token: string, now = new Date()): Promise<{ groupId: string | null }> {
     const invitation = await this.findUsable(token, now);
+    if (invitation.platoUsername !== null) {
+      // Invitation nominative : elle n'est utilisable que par le compte portant ce pseudo Plato.
+      const me = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { platoUsername: true },
+      });
+      if (!me || !samePseudo(invitation.platoUsername, me.platoUsername)) {
+        throw new ForbiddenException('Cette invitation est destinée à un autre pseudo Plato');
+      }
+    }
     try {
       await this.prisma.$transaction(async (tx) => {
         await this.claim(tx, invitation.id, now);

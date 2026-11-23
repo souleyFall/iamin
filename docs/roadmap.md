@@ -22,6 +22,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes         | fusionnée |
 | 15  | `docs(security)` : audit final, registre des risques, registre des traitements     | fusionnée |
 | 16  | `feat(groups)` : le propriétaire valide les super admins, qui créent leurs groupes | fusionnée |
+| 17  | `feat(groups)` : pseudo Plato imposé par l'invitation                              | fusionnée |
 
 ## Après
 

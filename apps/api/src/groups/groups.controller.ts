@@ -15,12 +15,16 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/auth.controller';
 import { Roles } from '../auth/guards';
 import { InvitationsService } from '../auth/invitations.service';
-import { groupNameSchema, parseBody } from '../auth/schemas';
+import { groupNameSchema, parseBody, platoUsernameSchema } from '../auth/schemas';
 import { GroupAccess, GroupGuard, type GroupRequest } from './group.guard';
 import { GroupsService } from './groups.service';
 
 const createSchema = z.object({ name: groupNameSchema });
-const inviteSchema = z.object({ groupRole: z.nativeEnum(GroupRole).default(GroupRole.ADMIN) });
+const inviteSchema = z.object({
+  groupRole: z.nativeEnum(GroupRole).default(GroupRole.ADMIN),
+  /** Facultatif : s'il est donné, seule la personne portant ce pseudo Plato peut utiliser le lien. */
+  platoUsername: platoUsernameSchema.optional(),
+});
 const idSchema = z.string().uuid();
 
 function requireGroup(req: GroupRequest) {
@@ -60,8 +64,8 @@ export class GroupsController {
   @GroupAccess({ roles: [GroupRole.SUPER_ADMIN], allowOwner: true })
   @Post(':groupId/invitations')
   invite(@Req() req: GroupRequest, @Body() body: unknown) {
-    const { groupRole } = parseBody(inviteSchema, body ?? {});
-    return this.groups.invite(requireAuth(req), requireGroup(req), groupRole);
+    const { groupRole, platoUsername } = parseBody(inviteSchema, body ?? {});
+    return this.groups.invite(requireAuth(req), requireGroup(req), groupRole, platoUsername);
   }
 
   @GroupAccess({ roles: [GroupRole.SUPER_ADMIN], allowOwner: true })

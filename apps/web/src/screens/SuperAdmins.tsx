@@ -19,6 +19,7 @@ export function SuperAdmins() {
         <InvitationManager
           title="Inviter un super admin"
           createLabel="Créer un lien d’invitation"
+          pseudoRequired
           intro="Un super admin crée ses propres groupes, puis y invite ses admins. Toi, tu ne fais que le valider : tu ne vois pas le contenu de ses groupes."
         />
       </div>

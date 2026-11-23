@@ -1,4 +1,4 @@
-import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine';
+﻿import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine';
 
 /** Formes des réponses de l'API (voir apps/api). Écrites à la main : l'API est la référence. */
 
@@ -42,6 +42,7 @@ export interface CreatedInvitation {
   /** `null` pour l'invitation d'un super admin (aucun groupe encore). */
   groupId: string | null;
   groupRole: GroupRole | null;
+  platoUsername: string | null;
   expiresAt: string;
   url: string;
 }
@@ -50,6 +51,9 @@ export interface PendingInvitation {
   id: string;
   /** Absent pour les invitations de super admins. */
   groupRole?: GroupRole;
+  /** Pseudo Plato imposé à la personne invitée, ou 
+ull si elle le choisit. */
+  platoUsername: string | null;
   createdAt: string;
   expiresAt: string;
 }

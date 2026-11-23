@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   CreatedInvitation,
@@ -39,7 +39,8 @@ export function useInvitations(groupId?: string) {
   return {
     list: useQuery({ queryKey: key, queryFn: () => api<PendingInvitation[]>('GET', base) }),
     create: useMutation({
-      mutationFn: () => api<CreatedInvitation>('POST', base, groupId ? {} : undefined),
+      mutationFn: (platoUsername?: string) =>
+        api<CreatedInvitation>('POST', base, platoUsername ? { platoUsername } : {}),
       onSuccess: refresh,
     }),
     revoke: useMutation({

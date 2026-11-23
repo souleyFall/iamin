@@ -123,6 +123,7 @@ export class GroupsService {
     auth: AuthContext,
     access: GroupContext,
     groupRole: GroupRole,
+    platoUsername?: string,
   ): Promise<CreatedInvitation> {
     if (groupRole === GroupRole.SUPER_ADMIN && access.role !== null) {
       throw new ForbiddenException('Seul le propriétaire de la plateforme invite un super admin');
@@ -130,6 +131,7 @@ export class GroupsService {
     return this.invitations.create({
       groupId: access.groupId,
       groupRole,
+      platoUsername,
       createdById: auth.user.id,
     });
   }
