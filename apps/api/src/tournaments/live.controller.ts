@@ -1,6 +1,6 @@
 import { Controller, Get, Header, Inject, Param, Sse, type MessageEvent } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { type Observable, from, mergeMap } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { z } from 'zod';
 import { Public } from '../auth/guards';
 import { parseBody } from '../auth/schemas';
@@ -37,7 +37,10 @@ export class LiveController {
   @Public()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Sse('live')
-  stream(@Param('slug') slug: string): Observable<MessageEvent> {
-    return from(this.live.stream(parseBody(slugSchema, slug))).pipe(mergeMap((o) => o));
+  async stream(@Param('slug') slug: string): Promise<Observable<MessageEvent>> {
+    // On attend la vérification (lien connu, plafonds) AVANT d'ouvrir le flux : sinon les en-têtes
+    // `200 text/event-stream` partent d'abord et l'erreur 404 ou 503 arrive trop tard, selon le
+    // timing (course repérée en CI sur un lien inconnu).
+    return this.live.stream(parseBody(slugSchema, slug));
   }
 }
