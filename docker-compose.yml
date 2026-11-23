@@ -2,7 +2,7 @@
 # Les identifiants viennent du fichier .env (jamais versionné) : copie .env.example et remplis-le.
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:19-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?définis POSTGRES_USER dans .env}
