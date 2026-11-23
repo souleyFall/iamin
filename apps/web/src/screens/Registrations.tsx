@@ -2,8 +2,38 @@ import { useState, type FormEvent } from 'react';
 import type { Registration } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { ErrorNote } from '../components/ErrorNote';
+import { copyText } from '../lib/chat';
 import { initialOf, isOpenStatus } from '../lib/labels';
 import { useTournamentCtx } from './tournament-context';
+
+/** Le lien à donner aux joueurs : inscription, puis suivi en direct. */
+function ShareLink({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState<boolean | null>(null);
+  const url = `${window.location.origin}/t/${slug}`;
+  return (
+    <div className="panel">
+      <h2 className="section-title">Lien pour les joueurs</h2>
+      <code style={{ overflowWrap: 'anywhere' }}>{url}</code>
+      <button
+        type="button"
+        className="btn btn-accent"
+        onClick={() => void copyText(url).then(setCopied)}
+      >
+        Copier le lien
+      </button>
+      {copied === true && (
+        <p className="notice notice-ok" role="status">
+          Lien copié.
+        </p>
+      )}
+      {copied === false && (
+        <p className="notice notice-bad" role="status">
+          Copie refusée par le navigateur : sélectionne le lien ci-dessus.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function Registrations() {
   const { tournament, isHolder, act } = useTournamentCtx();
@@ -27,6 +57,8 @@ export function Registrations() {
   return (
     <div className="page" style={{ paddingTop: 12 }}>
       {!open && <p className="card">Le tirage est fait : la liste des joueurs est figée.</p>}
+
+      <ShareLink slug={tournament.publicSlug} />
 
       <section aria-labelledby="pending-title">
         <h2 id="pending-title" className="section-title">

@@ -37,6 +37,11 @@ export default defineConfig(
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: { ...globals.browser } },
   },
+  // Le service worker tourne dans un contexte à part (`self`, `caches`), pas dans la page.
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: { ...globals.serviceworker } },
+  },
   // Les fichiers JavaScript (scripts, configuration) ne sont pas dans un tsconfig :
   // les règles qui demandent les types ne s'y appliquent pas.
   {

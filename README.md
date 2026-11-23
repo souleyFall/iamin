@@ -36,6 +36,13 @@ cp apps/web/.env.example apps/web/.env   # facultatif : VITE_API_URL (défaut ht
 pnpm --filter @iamin/web dev             # puis http://localhost:5173 (WEB_ORIGIN de l'API doit être cette adresse exacte)
 ```
 
+La page des joueurs est `/t/<lien du tournoi>` (le lien se copie depuis l'onglet Inscrits) : inscription, statut et direct, sans compte. L'application est installable (PWA) : le service worker n'est actif que dans la version construite, pour l'essayer en local :
+
+```bash
+pnpm --filter @iamin/web build
+pnpm --filter @iamin/web preview   # http://localhost:4173 (WEB_ORIGIN de l'API doit être cette adresse)
+```
+
 Créer le compte du propriétaire (le premier compte : personne ne peut l'inviter). Le mot de passe passe par une variable d'environnement, jamais par un argument, pour ne rester ni dans la liste des processus ni dans l'historique du terminal :
 
 ```powershell

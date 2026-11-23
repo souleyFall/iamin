@@ -9,6 +9,7 @@ import { Login } from './screens/Login';
 import { Me } from './screens/Me';
 import { NewTournament } from './screens/NewTournament';
 import { Play } from './screens/Play';
+import { PublicTournament } from './screens/PublicTournament';
 import { Registrations } from './screens/Registrations';
 import { TournamentLayout } from './screens/TournamentLayout';
 import { Tournaments } from './screens/Tournaments';
@@ -17,6 +18,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/connexion" element={<Login />} />
+      <Route path="/t/:slug" element={<PublicTournament />} />
       <Route element={<Layout />}>
         <Route index element={<Tournaments />} />
         <Route path="nouveau" element={<NewTournament />} />

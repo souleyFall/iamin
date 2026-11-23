@@ -27,6 +27,15 @@ const client = new QueryClient({
   },
 });
 
+// Le service worker n'est actif qu'en production : en développement il masquerait les changements.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Sans service worker l'application marche pareil, seulement sans installation ni hors ligne.
+    });
+  });
+}
+
 const root = document.getElementById('root');
 if (!root) throw new Error('Élément #root introuvable');
 
