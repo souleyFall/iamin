@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
 
@@ -69,7 +69,10 @@ export function Login() {
           Se connecter
         </button>
       </form>
-      <p className="notice-standalone">i-am-in est un outil indépendant, non affilié à Plato.</p>
+      <p className="notice-standalone">
+        i-am-in est un outil indépendant, non affilié à Plato.{' '}
+        <Link to="/avis">Donner mon avis</Link>
+      </p>
     </main>
   );
 }

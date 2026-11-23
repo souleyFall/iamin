@@ -1,4 +1,23 @@
-import type { Presence, TournamentFormat, TournamentStatus } from '../api/types';
+import type {
+  FeedbackKind,
+  FeedbackStatus,
+  Presence,
+  TournamentFormat,
+  TournamentStatus,
+} from '../api/types';
+
+export const FEEDBACK_KIND_LABEL: Record<FeedbackKind, string> = {
+  IDEA: 'Idée',
+  IMPROVEMENT: 'Amélioration',
+  BUG: 'Bug',
+  OTHER: 'Autre',
+};
+
+export const FEEDBACK_STATUS_LABEL: Record<FeedbackStatus, string> = {
+  NEW: 'NOUVEAU',
+  READ: 'LU',
+  DONE: 'TRAITÉ',
+};
 
 export const STATUS_LABEL: Record<TournamentStatus, string> = {
   REGISTRATION: 'INSCRIPTIONS',

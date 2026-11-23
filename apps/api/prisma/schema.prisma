@@ -53,6 +53,7 @@ model User {
   tournamentsHeld    Tournament[]      @relation("TournamentHolder")
   handoversOffered   Tournament[]      @relation("TournamentHandover")
   events             TournamentEvent[]
+  feedbacks          Feedback[]
 }
 
 model Group {
@@ -262,4 +263,36 @@ model TournamentEvent {
   createdAt    DateTime   @default(now())
 
   @@index([tournamentId, createdAt])
+}
+
+enum FeedbackKind {
+  IDEA // proposition de fonctionnalité
+  IMPROVEMENT // amélioration d'une fonctionnalité existante
+  BUG // anomalie signalée
+  OTHER
+}
+
+enum FeedbackStatus {
+  NEW
+  READ
+  DONE // traité : supprimé automatiquement 12 mois plus tard par une purge du propriétaire
+}
+
+/// Retour d'un utilisateur : lu par le propriétaire de la plateforme seulement. Un admin le dépose
+/// avec son compte (authorId), un joueur sans compte anonymement (contact facultatif).
+model Feedback {
+  id        String         @id @default(uuid()) @db.Uuid
+  kind      FeedbackKind
+  message   String
+  /// Pseudo Plato laissé à dessein par un joueur sans compte, pour qu'on puisse lui répondre.
+  contact   String?
+  authorId  String?        @db.Uuid
+  author    User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  status    FeedbackStatus @default(NEW)
+  createdAt DateTime       @default(now())
+  /// Date du passage à « traité » : sert à la purge des retours anciens.
+  handledAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([authorId])
 }

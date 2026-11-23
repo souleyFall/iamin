@@ -125,6 +125,7 @@ describe('politique des routes (audit)', () => {
         'POST /auth/reset-requests',
         'POST /invitations/accept',
         'POST /invitations/preview',
+        'POST /public/feedback',
         'POST /public/tournaments/:slug/registrations',
         // Flux en direct : lu par `@Sse('live')`, qui se déclare comme une route GET.
         'GET /public/tournaments/:slug/live',
@@ -138,6 +139,23 @@ describe('politique des routes (audit)', () => {
     const owner = [...tickets, ...all.filter((r) => r.path.startsWith('/creator-invitations'))];
     expect(owner.length).toBe(6);
     expect(owner.filter((r) => !r.roles.includes('PLATFORM_OWNER')).map((r) => r.id)).toEqual([]);
+  });
+
+  it('la boîte de retours se lit, se classe et se vide par le propriétaire seul', () => {
+    const inbox = all.filter((r) => r.path.startsWith('/feedback') && r.id !== 'POST /feedback');
+    expect(inbox.map((r) => r.id).sort()).toEqual([
+      'DELETE /feedback/:feedbackId',
+      'GET /feedback',
+      'PATCH /feedback/:feedbackId',
+      'POST /feedback/purge',
+    ]);
+    expect(inbox.filter((r) => !r.roles.includes('PLATFORM_OWNER')).map((r) => r.id)).toEqual([]);
+    // Déposer un retour est ouvert à tout compte connecté, avec une limite de débit.
+    expect(all.find((r) => r.id === 'POST /feedback')).toMatchObject({
+      roles: [],
+      isPublic: false,
+      hasThrottle: true,
+    });
   });
 
   it('seul un super admin (GROUP_CREATOR) crée un groupe : POST /groups exige ce rôle', () => {

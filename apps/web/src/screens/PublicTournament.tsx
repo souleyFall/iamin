@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import {
   drawOf,
@@ -278,7 +278,8 @@ export function PublicTournament() {
         )}
 
         <p className="notice-standalone" style={{ marginTop: 'auto', padding: '16px 20px' }}>
-          i-am-in est un outil indépendant, non affilié à Plato.
+          i-am-in est un outil indépendant, non affilié à Plato.{' '}
+          <Link to="/avis">Donner mon avis</Link>
         </p>
       </main>
     </div>

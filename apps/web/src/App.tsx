@@ -4,6 +4,8 @@ import { AcceptInvitation } from './screens/AcceptInvitation';
 import { CheckIn } from './screens/CheckIn';
 import { Copy } from './screens/Copy';
 import { Draw } from './screens/Draw';
+import { Feedback } from './screens/Feedback';
+import { FeedbackInbox } from './screens/FeedbackInbox';
 import { GroupScreen } from './screens/GroupScreen';
 import { Journal } from './screens/Journal';
 import { Login } from './screens/Login';
@@ -23,12 +25,14 @@ export function App() {
       <Route path="/connexion" element={<Login />} />
       <Route path="/t/:slug" element={<PublicTournament />} />
       <Route path="/invitation/:token" element={<AcceptInvitation />} />
+      <Route path="/avis" element={<Feedback />} />
       <Route element={<Layout />}>
         <Route index element={<Tournaments />} />
         <Route path="nouveau" element={<NewTournament />} />
         <Route path="groupe" element={<GroupScreen />} />
         <Route path="groupe/nouveau" element={<NewGroup />} />
         <Route path="super-admins" element={<SuperAdmins />} />
+        <Route path="retours" element={<FeedbackInbox />} />
         <Route path="moi" element={<Me />} />
         <Route path="tournois/:tournamentId" element={<TournamentLayout />}>
           <Route index element={<Navigate to="inscrits" replace />} />

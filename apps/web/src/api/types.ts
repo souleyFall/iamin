@@ -58,6 +58,23 @@ ull si elle le choisit. */
   expiresAt: string;
 }
 
+export type FeedbackKind = 'IDEA' | 'IMPROVEMENT' | 'BUG' | 'OTHER';
+export type FeedbackStatus = 'NEW' | 'READ' | 'DONE';
+
+/** Un retour vu par le propriétaire de la plateforme. */
+export interface FeedbackItem {
+  id: string;
+  kind: FeedbackKind;
+  message: string;
+  /** Pseudo Plato laissé par un joueur sans compte. */
+  contact: string | null;
+  /** Compte admin qui l'a déposé ; `null` pour un joueur sans compte. */
+  author: { username: string } | null;
+  status: FeedbackStatus;
+  createdAt: string;
+  handledAt: string | null;
+}
+
 export interface Person {
   id: string;
   username: string;

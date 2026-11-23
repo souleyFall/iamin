@@ -3,6 +3,9 @@ import { api } from './client';
 import type {
   CreatedInvitation,
   DrawView,
+  FeedbackItem,
+  FeedbackKind,
+  FeedbackStatus,
   GroupDetail,
   GroupSummary,
   PendingInvitation,
@@ -45,6 +48,40 @@ export function useInvitations(groupId?: string) {
     }),
     revoke: useMutation({
       mutationFn: (id: string) => api<void>('DELETE', `${base}/${id}`),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+/** Dépose un retour : avec le compte d'un admin connecté, sinon anonymement (pseudo facultatif). */
+export function useSendFeedback(signedIn: boolean) {
+  return useMutation({
+    mutationFn: (input: { kind: FeedbackKind; message: string; contact?: string }) =>
+      api<{ id: string }>('POST', signedIn ? '/feedback' : '/public/feedback', input),
+  });
+}
+
+/** Boîte de réception du propriétaire de la plateforme. */
+export function useFeedbackInbox(status: FeedbackStatus | 'ALL') {
+  const client = useQueryClient();
+  const refresh = () => client.invalidateQueries({ queryKey: ['feedback'] });
+  return {
+    list: useQuery({
+      queryKey: ['feedback', status],
+      queryFn: () =>
+        api<FeedbackItem[]>('GET', status === 'ALL' ? '/feedback' : `/feedback?status=${status}`),
+    }),
+    setStatus: useMutation({
+      mutationFn: (v: { id: string; status: FeedbackStatus }) =>
+        api<void>('PATCH', `/feedback/${v.id}`, { status: v.status }),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api<void>('DELETE', `/feedback/${id}`),
+      onSuccess: refresh,
+    }),
+    purge: useMutation({
+      mutationFn: () => api<{ deleted: number }>('POST', '/feedback/purge'),
       onSuccess: refresh,
     }),
   };

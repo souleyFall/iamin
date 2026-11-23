@@ -12,6 +12,8 @@ import { SessionService } from './auth/session.service';
 import { TicketsController } from './auth/tickets.controller';
 import type { AppConfig } from './config';
 import { APP_CONFIG } from './config.token';
+import { FeedbackController, PublicFeedbackController } from './feedback/feedback.controller';
+import { FeedbackService } from './feedback/feedback.service';
 import { HealthController } from './health.controller';
 import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
@@ -56,6 +58,8 @@ export class AppModule {
         RelayController,
         PublicTournamentsController,
         LiveController,
+        FeedbackController,
+        PublicFeedbackController,
       ],
       providers: [
         { provide: APP_CONFIG, useValue: config },
@@ -70,6 +74,7 @@ export class AppModule {
         EventsService,
         RelayService,
         LiveService,
+        FeedbackService,
         // Garde de route (@UseGuards) : exécutée après les gardes globales ci-dessous.
         GroupGuard,
         // Ordre d'exécution : limite de débit, origine, session et CSRF, puis rôle.
