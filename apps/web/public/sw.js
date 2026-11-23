@@ -2,9 +2,10 @@
  * Service worker d'i-am-in : rend l'application installable et garde sa coquille (HTML, scripts,
  * styles, polices, icônes) pour qu'elle s'ouvre même sans réseau.
  *
- * Règle de sécurité : on ne met JAMAIS en cache une réponse de l'API. Seules les requêtes GET de
- * la même origine que la page sont traitées ; l'API est une autre origine, donc elle passe
- * directement au réseau. Pas de données de tournoi, de session ni de jeton dans le cache.
+ * Règle de sécurité : on ne met JAMAIS en cache une réponse de l'API. En développement l'API est
+ * une autre origine ; en production elle est servie sous /api, sur la même origine que la page :
+ * on l'exclut donc par son chemin. Seuls sont gardés les pages (navigations), /assets/ et /icons/.
+ * Pas de données de tournoi, de session ni de jeton dans le cache.
  */
 const CACHE = 'iamin-shell-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
@@ -28,6 +29,8 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // L'API (production : même origine, sous /api) et son flux en direct passent toujours au réseau.
+  if (url.pathname.startsWith('/api/')) return;
 
   // Pages : le réseau d'abord (toujours la dernière version), la coquille en secours hors ligne.
   if (request.mode === 'navigate') {

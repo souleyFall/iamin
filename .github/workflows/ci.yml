@@ -63,6 +63,31 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # Les images de production se construisent et le Compose de production est valide. Rien n'est
+  # publié : on vérifie seulement que `docker compose up` marchera sur le serveur.
+  images:
+    name: Images Docker (construction)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Compose de production valide (variables factices)
+        run: docker compose -f docker-compose.prod.yml config --quiet
+        env:
+          SITE_ADDRESS: example.test
+          POSTGRES_USER: iamin
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: iamin
+      - run: docker build --target api -t iamin-api:ci .
+      - run: docker build --target web -t iamin-web:ci .
+      - name: Syntaxe des scripts de sauvegarde
+        run: |
+          bash -n deploy/backup.sh
+          bash -n deploy/restore.sh
+
   audit:
     name: Audit des dépendances (production)
     runs-on: ubuntu-latest

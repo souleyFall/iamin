@@ -14,7 +14,15 @@ describe('loadConfig', () => {
       databaseUrl: valid.DATABASE_URL,
       webOrigin: valid.WEB_ORIGIN,
       sessionCookieSecure: false,
+      trustProxy: 0,
     });
+  });
+
+  it('lit le nombre de proxys de confiance et refuse une valeur absurde', () => {
+    expect(loadConfig({ ...valid, TRUST_PROXY: '1' }).trustProxy).toBe(1);
+    expect(() => loadConfig({ ...valid, TRUST_PROXY: '-1' })).toThrow(/TRUST_PROXY/);
+    expect(() => loadConfig({ ...valid, TRUST_PROXY: '99' })).toThrow(/TRUST_PROXY/);
+    expect(() => loadConfig({ ...valid, TRUST_PROXY: 'oui' })).toThrow(/TRUST_PROXY/);
   });
 
   it('lit les valeurs fournies', () => {

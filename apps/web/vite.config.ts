@@ -7,6 +7,9 @@ export default defineConfig({
   // `@iamin/engine` est un paquet du dépôt compilé en CommonJS : Vite doit le convertir.
   optimizeDeps: { include: ['@iamin/engine'] },
   build: {
+    // Aucune ressource intégrée au CSS en `data:` : la CSP de production (`font-src 'self'`,
+    // voir deploy/Caddyfile) les refuserait. Les polices restent des fichiers servis par l'origine.
+    assetsInlineLimit: 0,
     commonjsOptions: { include: [/node_modules/, /packages[\\/]engine[\\/]dist/] },
   },
   test: {

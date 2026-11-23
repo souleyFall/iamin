@@ -25,6 +25,9 @@ const schema = z.object({
       }
     }, 'WEB_ORIGIN doit être une origine exacte, par exemple http://localhost:5173'),
   SESSION_COOKIE_SECURE: booleanFromText.default(false),
+  // Nombre de proxys de confiance devant l'API (0 = aucun). Derrière Caddy : 1. Sans ce réglage,
+  // toutes les limites de débit (par IP) compteraient l'adresse du proxy, donc un seul « visiteur ».
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export interface AppConfig {
@@ -33,6 +36,7 @@ export interface AppConfig {
   databaseUrl: string;
   webOrigin: string;
   sessionCookieSecure: boolean;
+  trustProxy: number;
 }
 
 export class ConfigError extends Error {
@@ -63,5 +67,6 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): A
     databaseUrl: c.DATABASE_URL,
     webOrigin: c.WEB_ORIGIN,
     sessionCookieSecure: c.SESSION_COOKIE_SECURE,
+    trustProxy: c.TRUST_PROXY,
   };
 }

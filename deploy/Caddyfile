@@ -1,0 +1,71 @@
+# Caddy : seul point d'entrée du serveur. Il sert l'interface, relaie /api vers l'API et obtient
+# tout seul les certificats HTTPS (Let's Encrypt) pour le domaine de SITE_ADDRESS.
+# En local, SITE_ADDRESS=localhost : certificat interne (le navigateur le signale, normal).
+
+{
+	# Pas de journal d'accès : il contiendrait l'adresse IP de chaque visiteur (RGPD, D21).
+	# Seules les erreurs du serveur lui-même sont écrites.
+	log {
+		level WARN
+	}
+	# Aucune mesure d'usage ni appel vers un tiers au démarrage.
+	admin off
+}
+
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# En-têtes de sécurité de toutes les pages (l'API ajoute les siens via helmet, D5).
+	header {
+		# HTTPS imposé pour un an, sous-domaines compris.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		# CSP : tout vient de notre origine (polices et scripts compris, voir D19). Ni script ni
+		# style en ligne, aucun domaine tiers. `connect-src 'self'` couvre l'API et le flux SSE.
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		-Server
+	}
+
+	# L'API, sous /api : le préfixe est retiré avant le relais. Le flux en direct (SSE) ne doit pas
+	# être mis en mémoire tampon. Caddy renseigne seul X-Forwarded-For (TRUST_PROXY=1 côté API).
+	handle_path /api/* {
+		reverse_proxy api:3000 {
+			flush_interval -1
+		}
+	}
+
+	# Fichiers à empreinte : jamais modifiés, gardés un an. Un fichier manquant répond 404
+	# (jamais index.html : un ancien client y trouverait une page HTML à la place d'un script,
+	# gardée un an dans son cache).
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		root * /srv
+
+		# Le service worker et la page d'entrée se revalident toujours : une mise à jour
+		# de l'application doit arriver sans attendre (D20).
+		@revalidate path /sw.js /index.html /manifest.webmanifest
+		header @revalidate Cache-Control "no-cache"
+
+		@manifest path /manifest.webmanifest
+		header @manifest Content-Type "application/manifest+json"
+
+		# Application d'une seule page : toute adresse inconnue rend index.html (le routeur décide).
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Une erreur (404 d'un fichier manquant, 502 si l'API est arrêtée) ne se garde jamais en cache.
+	handle_errors {
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}" {err.status_code}
+	}
+}

@@ -5,6 +5,9 @@
   "description": "Moteur de tournoi d'i-am-in : TypeScript pur, sans dépendance, sans accès réseau ni base.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
