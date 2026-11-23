@@ -53,6 +53,8 @@ Remove-Item env:IAMIN_OWNER_PASSWORD
 
 Mot de passe perdu : même commande avec le même identifiant et `--reset-password`.
 
+Qui fait quoi ([D22](docs/decisions.md)) : le propriétaire se connecte, ouvre l'onglet **Moi** puis **Inviter un super admin**, et transmet le lien. Le super admin crée son compte avec ce lien, puis **crée lui-même ses groupes** (5 au plus) et y invite ses admins depuis l'onglet **Groupe**. Le propriétaire ne crée pas de groupe et ne lit pas leurs données.
+
 Tests d'intégration (vraie base) : ils tournent en CI. En local, ils sont ignorés tant que `TEST_DATABASE_URL` n'est pas défini, et refusent de tourner sur une base dont le nom ne finit pas par `_test` (ils vident les tables).
 
 ```bash

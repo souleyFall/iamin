@@ -2,7 +2,8 @@ import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine
 
 /** Formes des réponses de l'API (voir apps/api). Écrites à la main : l'API est la référence. */
 
-export type Role = 'PLATFORM_OWNER' | 'MEMBER';
+/** `GROUP_CREATOR` = « super admin » : invité par le propriétaire, seul à pouvoir créer des groupes. */
+export type Role = 'PLATFORM_OWNER' | 'GROUP_CREATOR' | 'MEMBER';
 export type GroupRole = 'SUPER_ADMIN' | 'ADMIN';
 export type TournamentFormat = 'ELIMINATION' | 'LEAGUE';
 export type TournamentStatus = 'REGISTRATION' | 'CHECK_IN' | 'STARTED' | 'FINISHED';
@@ -33,6 +34,24 @@ export interface GroupDetail {
   name: string;
   myRole: GroupRole | null;
   members: { userId: string; username: string; platoUsername: string; role: GroupRole }[];
+}
+
+/** Invitation qu'on vient de créer : le lien n'est montré qu'à cet instant. */
+export interface CreatedInvitation {
+  id: string;
+  /** `null` pour l'invitation d'un super admin (aucun groupe encore). */
+  groupId: string | null;
+  groupRole: GroupRole | null;
+  expiresAt: string;
+  url: string;
+}
+
+export interface PendingInvitation {
+  id: string;
+  /** Absent pour les invitations de super admins. */
+  groupRole?: GroupRole;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface Person {

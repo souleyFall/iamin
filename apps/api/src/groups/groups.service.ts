@@ -7,9 +7,13 @@ import {
 } from '@nestjs/common';
 import { GroupRole, Role } from '@prisma/client';
 import { InvitationsService, type CreatedInvitation } from '../auth/invitations.service';
+
 import type { AuthContext } from '../auth/session.service';
 import { PrismaService } from '../prisma.service';
 import type { GroupContext } from './group.guard';
+
+/** Plafond de groupes qu'un super admin peut créer (limite l'abus d'un compte validé). */
+export const MAX_GROUPS_PER_CREATOR = 5;
 
 export interface GroupSummary {
   id: string;
@@ -28,20 +32,27 @@ export class GroupsService {
   ) {}
 
   /**
-   * Le propriétaire crée un groupe et l'invitation de son créateur (super admin).
-   * Les deux sont créés dans la même transaction : jamais de groupe sans personne pour le gérer.
+   * Un super admin (GROUP_CREATOR) crée un groupe et en devient super admin, dans la même
+   * transaction : jamais de groupe sans personne pour le gérer. Le nombre de groupes par compte est
+   * plafonné ; la ligne du compte est verrouillée pour que deux créations simultanées ne dépassent
+   * pas le plafond.
    */
-  async create(
-    ownerId: string,
-    name: string,
-  ): Promise<{ group: { id: string; name: string }; invitation: CreatedInvitation }> {
+  async create(creatorId: string, name: string): Promise<{ group: { id: string; name: string } }> {
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${creatorId}::uuid FOR UPDATE`;
+      const owned = await tx.groupMember.count({
+        where: { userId: creatorId, role: GroupRole.SUPER_ADMIN },
+      });
+      if (owned >= MAX_GROUPS_PER_CREATOR) {
+        throw new ConflictException(
+          `Tu as atteint la limite de ${MAX_GROUPS_PER_CREATOR} groupes par super admin`,
+        );
+      }
       const group = await tx.group.create({ data: { name } });
-      const invitation = await this.invitations.create(
-        { groupId: group.id, groupRole: GroupRole.SUPER_ADMIN, createdById: ownerId },
-        tx,
-      );
-      return { group: { id: group.id, name: group.name }, invitation };
+      await tx.groupMember.create({
+        data: { groupId: group.id, userId: creatorId, role: GroupRole.SUPER_ADMIN },
+      });
+      return { group: { id: group.id, name: group.name } };
     });
   }
 
