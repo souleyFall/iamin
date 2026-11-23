@@ -4,6 +4,7 @@ import { useFeedbackInbox } from '../api/queries';
 import type { FeedbackStatus } from '../api/types';
 import { useAuth } from '../auth/session';
 import { ConfirmButton } from '../components/ConfirmButton';
+import { ElevationPrompt, useElevated } from '../components/Elevation';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { FEEDBACK_KIND_LABEL, FEEDBACK_STATUS_LABEL } from '../lib/labels';
@@ -31,6 +32,7 @@ export function FeedbackInbox() {
 function Inbox() {
   const [filter, setFilter] = useState<FeedbackStatus | 'ALL'>('NEW');
   const { list, setStatus, remove, purge } = useFeedbackInbox(filter);
+  const elevated = useElevated();
   return (
     <>
       <header className="topbar">
@@ -40,6 +42,7 @@ function Inbox() {
         <h1 className="title">Retours</h1>
       </header>
       <div className="page">
+        <ElevationPrompt reason="Supprimer un retour ou purger demande ton code. Lire et classer ne le demandent pas." />
         <div className="segmented" role="group" aria-label="Filtrer par statut">
           {FILTERS.map((f) => (
             <button
@@ -105,6 +108,7 @@ function Inbox() {
                 )}
                 <ConfirmButton
                   confirmLabel="Supprimer pour de bon"
+                  disabled={!elevated}
                   onConfirm={() => remove.mutate(f.id)}
                 >
                   Supprimer
@@ -122,6 +126,7 @@ function Inbox() {
           <ConfirmButton
             confirmLabel="Purger maintenant"
             className="btn"
+            disabled={!elevated}
             onConfirm={() => purge.mutate()}
           >
             Purger les retours traités depuis plus d’un an

@@ -15,6 +15,7 @@ describe('loadConfig', () => {
       webOrigin: valid.WEB_ORIGIN,
       sessionCookieSecure: false,
       trustProxy: 0,
+      totpEncryptionKey: expect.any(Buffer) as Buffer,
     });
   });
 
@@ -57,11 +58,34 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...valid, PORT: 'abc' })).toThrow(/PORT/);
   });
 
-  it('exige un cookie Secure en production', () => {
-    expect(() => loadConfig({ ...valid, NODE_ENV: 'production' })).toThrow(/SESSION_COOKIE_SECURE/);
-    expect(
-      loadConfig({ ...valid, NODE_ENV: 'production', SESSION_COOKIE_SECURE: 'true' }).nodeEnv,
-    ).toBe('production');
+  it('exige un cookie Secure et une clé de chiffrement TOTP en production', () => {
+    const prod = { ...valid, NODE_ENV: 'production', TOTP_ENCRYPTION_KEY: 'ab'.repeat(32) };
+    expect(() => loadConfig(prod)).toThrow(/SESSION_COOKIE_SECURE/);
+    expect(loadConfig({ ...prod, SESSION_COOKIE_SECURE: 'true' }).nodeEnv).toBe('production');
+    expect(() =>
+      loadConfig({ ...valid, NODE_ENV: 'production', SESSION_COOKIE_SECURE: 'true' }),
+    ).toThrow(/TOTP_ENCRYPTION_KEY/);
+  });
+
+  it('lit la clé TOTP (64 caractères hexadécimaux) et refuse une clé mal formée', () => {
+    const key = '0f'.repeat(32);
+    expect(loadConfig({ ...valid, TOTP_ENCRYPTION_KEY: key }).totpEncryptionKey).toEqual(
+      Buffer.from(key, 'hex'),
+    );
+    for (const bad of ['', 'trop-court', 'zz'.repeat(32), 'ab'.repeat(31)]) {
+      expect(() => loadConfig({ ...valid, TOTP_ENCRYPTION_KEY: bad })).toThrow(
+        /TOTP_ENCRYPTION_KEY/,
+      );
+    }
+  });
+
+  it('n’affiche jamais la clé TOTP dans une erreur', () => {
+    try {
+      loadConfig({ ...valid, TOTP_ENCRYPTION_KEY: 'secret-pas-hexadecimal-du-tout' });
+      expect.unreachable();
+    } catch (error) {
+      expect(String(error)).not.toContain('secret-pas-hexadecimal');
+    }
   });
 
   it('n’affiche jamais les valeurs dans le message d’erreur', () => {

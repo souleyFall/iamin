@@ -15,6 +15,7 @@ const user = (role: Role): User => ({
   username: 'chef',
   platoUsername: 'chef_plato',
   role,
+  mfaEnabled: role === 'PLATFORM_OWNER',
 });
 
 type Handler = (body: unknown) => { status?: number; body?: unknown };
@@ -63,7 +64,13 @@ function renderApp(path: string) {
 }
 
 const loggedInAs = (role: Role, groups: unknown[] = []) => {
-  handlers['GET /auth/me'] = () => ({ body: { user: user(role), csrfToken: 'csrf-1' } });
+  handlers['GET /auth/me'] = () => ({
+    body: {
+      user: user(role),
+      csrfToken: 'csrf-1',
+      elevatedUntil: new Date(Date.now() + 600_000).toISOString(),
+    },
+  });
   handlers['GET /groups'] = () => ({ body: groups });
 };
 

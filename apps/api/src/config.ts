@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 /**
@@ -28,7 +29,16 @@ const schema = z.object({
   // Nombre de proxys de confiance devant l'API (0 = aucun). Derrière Caddy : 1. Sans ce réglage,
   // toutes les limites de débit (par IP) compteraient l'adresse du proxy, donc un seul « visiteur ».
   TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
+  // Clé (32 octets en hexadécimal) qui chiffre les secrets de double authentification en base.
+  // Obligatoire en production ; en développement et en test une clé fixe, publique, sert de repli.
+  TOTP_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'doit faire 64 caractères hexadécimaux (openssl rand -hex 32)')
+    .optional(),
 });
+
+/** Clé de repli hors production : connue de tous, donc sans aucune valeur de protection. */
+const DEV_TOTP_KEY = createHash('sha256').update('iamin-developpement-seulement').digest();
 
 export interface AppConfig {
   nodeEnv: 'development' | 'test' | 'production';
@@ -37,6 +47,8 @@ export interface AppConfig {
   webOrigin: string;
   sessionCookieSecure: boolean;
   trustProxy: number;
+  /** Clé AES-256 des secrets de double authentification. */
+  totpEncryptionKey: Buffer;
 }
 
 export class ConfigError extends Error {
@@ -61,6 +73,11 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): A
       'Configuration invalide :\nSESSION_COOKIE_SECURE : doit être « true » en production (HTTPS)',
     );
   }
+  if (c.NODE_ENV === 'production' && !c.TOTP_ENCRYPTION_KEY) {
+    throw new ConfigError(
+      'Configuration invalide :\nTOTP_ENCRYPTION_KEY : obligatoire en production (openssl rand -hex 32)',
+    );
+  }
   return {
     nodeEnv: c.NODE_ENV,
     port: c.PORT,
@@ -68,5 +85,8 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): A
     webOrigin: c.WEB_ORIGIN,
     sessionCookieSecure: c.SESSION_COOKIE_SECURE,
     trustProxy: c.TRUST_PROXY,
+    totpEncryptionKey: c.TOTP_ENCRYPTION_KEY
+      ? Buffer.from(c.TOTP_ENCRYPTION_KEY, 'hex')
+      : DEV_TOTP_KEY,
   };
 }

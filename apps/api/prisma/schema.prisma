@@ -34,16 +34,22 @@ enum ResetTicketStatus {
 }
 
 model User {
-  id                String   @id @default(uuid()) @db.Uuid
+  id                String    @id @default(uuid()) @db.Uuid
   /// Identifiant de connexion, toujours en minuscules.
-  username          String   @unique
+  username          String    @unique
   /// Pseudo Plato : sert au propriétaire à vérifier l'identité lors d'une réinitialisation.
   platoUsername     String
   /// Empreinte argon2id : jamais le mot de passe.
   passwordHash      String
   role              Role
-  createdAt         DateTime @default(now())
-  passwordChangedAt DateTime @default(now())
+  createdAt         DateTime  @default(now())
+  passwordChangedAt DateTime  @default(now())
+  /// Secret TOTP chiffré (AES-256-GCM, clé TOTP_ENCRYPTION_KEY) : une copie de la base ne suffit
+  /// pas à générer les codes. Présent dès le début de l'activation, actif quand `totpEnabledAt` l'est.
+  totpSecretEnc     String?
+  totpEnabledAt     DateTime?
+  /// Dernière tranche de 30 s acceptée : un code ne sert qu'une fois (pas de rejeu d'un code vu).
+  totpLastStep      Int?
 
   sessions           Session[]
   resetTickets       ResetTicket[]
@@ -54,6 +60,33 @@ model User {
   handoversOffered   Tournament[]      @relation("TournamentHandover")
   events             TournamentEvent[]
   feedbacks          Feedback[]
+  recoveryCodes      RecoveryCode[]
+  mfaChallenges      MfaChallenge[]
+}
+
+/// Code de secours de la double authentification : à usage unique, seule son empreinte est stockée.
+model RecoveryCode {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @db.Uuid
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String    @unique
+  usedAt   DateTime?
+
+  @@index([userId])
+}
+
+/// Étape intermédiaire d'une connexion : le mot de passe est bon, le code reste à donner. Ce n'est
+/// PAS une session : aucun cookie, aucun droit. Jeton aléatoire, empreinte seule en base.
+model MfaChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  attempts  Int      @default(0)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Group {
@@ -175,16 +208,19 @@ model GroupMember {
 }
 
 model Session {
-  id         String   @id @default(uuid()) @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
   /// SHA-256 du jeton du cookie : une fuite de la base ne donne pas de session utilisable.
-  tokenHash  String   @unique
+  tokenHash     String    @unique
   /// Jeton anti-CSRF propre à cette session.
-  csrfToken  String
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  lastSeenAt DateTime @default(now())
-  expiresAt  DateTime
+  csrfToken     String
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  /// Jusqu'à quand les actions sensibles sont permises sans redonner le code (10 minutes après
+  /// une connexion avec code ou une ressaisie).
+  elevatedUntil DateTime?
 
   @@index([userId])
   @@index([expiresAt])

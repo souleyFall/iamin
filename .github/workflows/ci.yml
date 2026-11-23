@@ -81,6 +81,7 @@ jobs:
           POSTGRES_USER: iamin
           POSTGRES_PASSWORD: ci-test-only
           POSTGRES_DB: iamin
+          TOTP_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
       - run: docker build --target api -t iamin-api:ci .
       - run: docker build --target web -t iamin-web:ci .
       - name: Syntaxe des scripts de sauvegarde

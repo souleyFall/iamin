@@ -15,7 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import { FeedbackKind, FeedbackStatus, Role } from '@prisma/client';
 import { z } from 'zod';
 import { requireAuth } from '../auth/auth.controller';
-import { type AuthedRequest, Public, Roles } from '../auth/guards';
+import { type AuthedRequest, Public, RequireElevation, Roles } from '../auth/guards';
 import { parseBody, platoUsernameSchema } from '../auth/schemas';
 import { FeedbackService } from './feedback.service';
 
@@ -70,6 +70,7 @@ export class FeedbackController {
 
   @Roles(Role.PLATFORM_OWNER)
   @HttpCode(204)
+  @RequireElevation()
   @Delete(':feedbackId')
   async remove(@Param('feedbackId') feedbackId: string) {
     await this.feedback.remove(parseBody(idSchema, feedbackId));
@@ -78,6 +79,7 @@ export class FeedbackController {
   /** Supprime les retours traités depuis plus d'un an. */
   @Roles(Role.PLATFORM_OWNER)
   @HttpCode(200)
+  @RequireElevation()
   @Post('purge')
   purge() {
     return this.feedback.purge();

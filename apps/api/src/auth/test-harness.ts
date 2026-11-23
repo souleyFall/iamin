@@ -9,7 +9,15 @@ import { PrismaClient, type Role } from '@prisma/client';
 import { AppModule } from '../app.module';
 import { setupApp } from '../app.setup';
 import type { AppConfig } from '../config';
-import { hashPassword } from './crypto';
+import * as OTPAuth from 'otpauth';
+import { encryptSecret, hashPassword } from './crypto';
+
+/** Clé de chiffrement des secrets TOTP des tests : fixe, sans valeur hors des tests. */
+export const TEST_TOTP_KEY = Buffer.alloc(32, 7);
+
+/** Secrets TOTP des comptes de test (identifiant -> base32) : le « téléphone » du propriétaire. */
+const mfaSecrets = new Map<string, string>();
+let activePrisma: PrismaClient | undefined;
 
 export const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
@@ -49,6 +57,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     webOrigin: WEB_ORIGIN,
     sessionCookieSecure: false,
     trustProxy: 0,
+    totpEncryptionKey: TEST_TOTP_KEY,
     ...overrides,
   };
   const moduleRef = await Test.createTestingModule({
@@ -58,6 +67,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
   setupApp(app, config);
   await app.listen(0);
   const prisma = new PrismaClient({ datasourceUrl: testDatabaseUrl });
+  activePrisma = prisma;
   return {
     app,
     url: await app.getUrl(),
@@ -76,18 +86,57 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
   );
 }
 
+/**
+ * Crée un compte. Le propriétaire a la double authentification active (elle est obligatoire) : le
+ * test la passe seul via Client.login. mfa: false crée un propriétaire sans, pour tester son
+ * activation ; mfa: true en active une sur un autre compte.
+ */
 export async function createUser(
   prisma: PrismaClient,
-  input: { username: string; password: string; role: Role; platoUsername?: string },
+  input: {
+    username: string;
+    password: string;
+    role: Role;
+    platoUsername?: string;
+    mfa?: boolean;
+  },
 ) {
-  return prisma.user.create({
+  const withMfa = input.mfa ?? input.role === 'PLATFORM_OWNER';
+  const secret = withMfa ? new OTPAuth.Secret({ size: 20 }) : undefined;
+  const user = await prisma.user.create({
     data: {
       username: input.username,
       platoUsername: input.platoUsername ?? input.username,
       passwordHash: await hashPassword(input.password),
       role: input.role,
+      ...(secret
+        ? {
+            totpSecretEnc: encryptSecret(TEST_TOTP_KEY, secret.base32),
+            totpEnabledAt: new Date(),
+          }
+        : {}),
     },
   });
+  if (secret) mfaSecrets.set(input.username, secret.base32);
+  return user;
+}
+
+/** Code à 6 chiffres que l'application du compte afficherait maintenant (stepOffset : 30 s par cran). */
+export function totpCodeFor(username: string, stepOffset = 0, now = Date.now()): string {
+  const base32 = mfaSecrets.get(username);
+  if (!base32) throw new Error('Pas de secret TOTP de test pour ' + username);
+  const totp = new OTPAuth.TOTP({
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(base32),
+  });
+  return totp.generate({ timestamp: now + stepOffset * 30_000 });
+}
+
+/** Mémorise le secret d'un compte activé par l'API (le test le lit dans la réponse de setup). */
+export function rememberTotpSecret(username: string, base32: string): void {
+  mfaSecrets.set(username, base32);
 }
 
 export interface Reply {
@@ -143,9 +192,30 @@ export class Client {
     return { status: res.status, body: parsed, headers: res.headers, setCookies };
   }
 
-  /** Se connecte et mémorise cookie et jeton CSRF. */
+  /**
+   * Se connecte et mémorise cookie et jeton CSRF. Si le compte a la double authentification et que
+   * le test en connaît le secret, la seconde étape est faite ici avec un code valide.
+   */
   async login(username: string, password: string): Promise<Reply> {
-    const reply = await this.request('POST', '/auth/login', { username, password });
+    let reply = await this.request('POST', '/auth/login', { username, password });
+    const first = reply.body as { mfaRequired?: boolean; challenge?: string } | undefined;
+    if (
+      reply.status === 200 &&
+      first?.mfaRequired &&
+      first.challenge &&
+      mfaSecrets.has(username.toLowerCase())
+    ) {
+      // Un code ne sert qu'une fois : on oublie la dernière tranche vue pour pouvoir se reconnecter
+      // plusieurs fois dans les 30 secondes d'un même test.
+      await activePrisma?.user.update({
+        where: { username: username.toLowerCase() },
+        data: { totpLastStep: null },
+      });
+      reply = await this.request('POST', '/auth/login/mfa', {
+        challenge: first.challenge,
+        code: totpCodeFor(username.toLowerCase()),
+      });
+    }
     const body = reply.body as { csrfToken?: string } | undefined;
     if (reply.status === 200 && body?.csrfToken) this.csrfToken = body.csrfToken;
     return reply;

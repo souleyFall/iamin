@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import type { Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import type { AppConfig } from '../config';
 import { APP_CONFIG } from '../config.token';
 import { readSessionToken } from './cookies';
@@ -18,12 +18,26 @@ import { type AuthContext, SessionService } from './session.service';
 
 export const IS_PUBLIC = 'isPublic';
 export const ROLES = 'roles';
+export const MFA_EXEMPT = 'mfaExempt';
+export const REQUIRE_ELEVATION = 'requireElevation';
 
 /** Route accessible sans être connecté (connexion, invitation, demande de réinitialisation…). */
 export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(IS_PUBLIC, true);
 /** Route réservée à certains rôles. */
 export const Roles = (...roles: Role[]): MethodDecorator & ClassDecorator =>
   SetMetadata(ROLES, roles);
+
+/**
+ * Route accessible à un propriétaire qui n'a pas encore activé la double authentification : celles qui
+ * servent à l'activer, à se déconnecter et à savoir qui on est. Toutes les autres lui sont fermées.
+ */
+export const MfaExempt = (): MethodDecorator & ClassDecorator => SetMetadata(MFA_EXEMPT, true);
+/**
+ * Action sensible : exige une connexion ou une ressaisie du code datant de moins de 10 minutes.
+ * Une session volée ne suffit plus pour inviter un super admin, émettre un lien de réinitialisation…
+ */
+export const RequireElevation = (): MethodDecorator & ClassDecorator =>
+  SetMetadata(REQUIRE_ELEVATION, true);
 
 export interface AuthedRequest extends Request {
   auth?: AuthContext;
@@ -103,6 +117,51 @@ export class RolesGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<AuthedRequest>();
     if (!req.auth || !roles.includes(req.auth.user.role)) {
       throw new ForbiddenException('Accès refusé');
+    }
+    return true;
+  }
+}
+
+/**
+ * Le propriétaire de la plateforme ne peut rien faire tant que la double authentification n'est pas
+ * active sur son compte. Les autres comptes ne sont pas concernés (activation facultative).
+ */
+@Injectable()
+export class MfaEnrollmentGuard implements CanActivate {
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const targets = [context.getHandler(), context.getClass()];
+    if (this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC, targets)) return true;
+    if (this.reflector.getAllAndOverride<boolean | undefined>(MFA_EXEMPT, targets)) return true;
+    const auth = context.switchToHttp().getRequest<AuthedRequest>().auth;
+    if (auth?.user.role === Role.PLATFORM_OWNER && !auth.user.mfaEnabled) {
+      throw new ForbiddenException({
+        message: 'Active la double authentification pour continuer',
+        code: 'MFA_ENROLLMENT_REQUIRED',
+      });
+    }
+    return true;
+  }
+}
+
+/** Refuse une action sensible si le code n'a pas été donné dans les 10 dernières minutes. */
+@Injectable()
+export class ElevationGuard implements CanActivate {
+  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const required = this.reflector.getAllAndOverride<boolean | undefined>(REQUIRE_ELEVATION, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!required) return true;
+    const auth = context.switchToHttp().getRequest<AuthedRequest>().auth;
+    if (!auth?.elevatedUntil || auth.elevatedUntil.getTime() <= Date.now()) {
+      throw new ForbiddenException({
+        message: 'Confirme avec ton code à 6 chiffres pour continuer',
+        code: 'ELEVATION_REQUIRED',
+      });
     }
     return true;
   }

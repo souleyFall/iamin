@@ -1,10 +1,15 @@
 import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import type { Role, Session, User } from '@prisma/client';
+import { Role, type Session, type User } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { newToken, sha256 } from './crypto';
 
 /** Durée de vie absolue d'une session : 7 jours (voir le registre RGPD). */
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/** Le propriétaire a une session plus courte : 12 h au total et 30 min sans activité. */
+export const OWNER_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+export const OWNER_IDLE_MS = 30 * 60 * 1000;
+/** Après une connexion avec code ou une ressaisie, les actions sensibles sont permises 10 minutes. */
+export const ELEVATION_MS = 10 * 60 * 1000;
 /** `lastSeenAt` n'est réécrit qu'une fois par minute, pour ne pas écrire à chaque requête. */
 const TOUCH_EVERY_MS = 60 * 1000;
 const PURGE_EVERY_MS = 60 * 60 * 1000;
@@ -14,12 +19,16 @@ export interface AuthUser {
   username: string;
   platoUsername: string;
   role: Role;
+  /** La double authentification est active sur ce compte. */
+  mfaEnabled: boolean;
 }
 
 export interface AuthContext {
   user: AuthUser;
   sessionId: string;
   csrfToken: string;
+  /** Fin de la période où les actions sensibles sont permises sans redonner le code. */
+  elevatedUntil: Date | null;
 }
 
 export function toAuthUser(user: User): AuthUser {
@@ -28,6 +37,7 @@ export function toAuthUser(user: User): AuthUser {
     username: user.username,
     platoUsername: user.platoUsername,
     role: user.role,
+    mfaEnabled: user.totpEnabledAt !== null,
   };
 }
 
@@ -36,6 +46,9 @@ export interface CreatedSession {
   token: string;
   csrfToken: string;
   expiresAt: Date;
+  /** Fin de la période « élevée » (connexion avec code), sinon 
+ull. */
+  elevatedUntil: Date | null;
 }
 
 @Injectable()
@@ -55,14 +68,27 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Ouvre une session avec un jeton neuf à chaque connexion (pas de fixation de session). */
-  async create(userId: string, now = new Date()): Promise<CreatedSession> {
+  async create(
+    userId: string,
+    now = new Date(),
+    options: { role?: Role; elevated?: boolean } = {},
+  ): Promise<CreatedSession> {
     const token = newToken();
     const csrfToken = newToken();
-    const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+    const ttl = options.role === Role.PLATFORM_OWNER ? OWNER_SESSION_TTL_MS : SESSION_TTL_MS;
+    const expiresAt = new Date(now.getTime() + ttl);
+    const elevatedUntil = options.elevated ? new Date(now.getTime() + ELEVATION_MS) : null;
     await this.prisma.session.create({
-      data: { tokenHash: sha256(token), csrfToken, userId, expiresAt, lastSeenAt: now },
+      data: {
+        tokenHash: sha256(token),
+        csrfToken,
+        userId,
+        expiresAt,
+        lastSeenAt: now,
+        elevatedUntil,
+      },
     });
-    return { token, csrfToken, expiresAt };
+    return { token, csrfToken, expiresAt, elevatedUntil };
   }
 
   /** Retrouve la session d'un jeton de cookie. `null` si inconnue ou expirée. */
@@ -76,14 +102,34 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
       await this.prisma.session.deleteMany({ where: { id: session.id } });
       return null;
     }
+    // Le propriétaire est déconnecté après 30 minutes sans activité.
+    if (
+      session.user.role === Role.PLATFORM_OWNER &&
+      now.getTime() - session.lastSeenAt.getTime() > OWNER_IDLE_MS
+    ) {
+      await this.prisma.session.deleteMany({ where: { id: session.id } });
+      return null;
+    }
     if (now.getTime() - session.lastSeenAt.getTime() > TOUCH_EVERY_MS) {
       await this.touch(session, now);
     }
-    return { user: toAuthUser(session.user), sessionId: session.id, csrfToken: session.csrfToken };
+    return {
+      user: toAuthUser(session.user),
+      sessionId: session.id,
+      csrfToken: session.csrfToken,
+      elevatedUntil: session.elevatedUntil,
+    };
   }
 
   private async touch(session: Session, now: Date): Promise<void> {
     await this.prisma.session.updateMany({ where: { id: session.id }, data: { lastSeenAt: now } });
+  }
+
+  /** Autorise les actions sensibles pendant 10 minutes (après un code valide). */
+  async elevate(sessionId: string, now = new Date()): Promise<Date> {
+    const elevatedUntil = new Date(now.getTime() + ELEVATION_MS);
+    await this.prisma.session.updateMany({ where: { id: sessionId }, data: { elevatedUntil } });
+    return elevatedUntil;
   }
 
   async destroy(sessionId: string): Promise<void> {

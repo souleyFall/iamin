@@ -15,6 +15,7 @@ import { NewTournament } from './screens/NewTournament';
 import { Play } from './screens/Play';
 import { PublicTournament } from './screens/PublicTournament';
 import { Registrations } from './screens/Registrations';
+import { Security } from './screens/Security';
 import { SuperAdmins } from './screens/SuperAdmins';
 import { TournamentLayout } from './screens/TournamentLayout';
 import { Tournaments } from './screens/Tournaments';
@@ -33,6 +34,7 @@ export function App() {
         <Route path="groupe/nouveau" element={<NewGroup />} />
         <Route path="super-admins" element={<SuperAdmins />} />
         <Route path="retours" element={<FeedbackInbox />} />
+        <Route path="securite" element={<Security />} />
         <Route path="moi" element={<Me />} />
         <Route path="tournois/:tournamentId" element={<TournamentLayout />}>
           <Route index element={<Navigate to="inscrits" replace />} />

@@ -15,11 +15,33 @@ export interface User {
   username: string;
   platoUsername: string;
   role: Role;
+  /** La double authentification est active sur ce compte. */
+  mfaEnabled: boolean;
 }
 
 export interface Session {
   user: User;
   csrfToken: string;
+  /** Fin de la période où les actions sensibles se font sans redonner le code. */
+  elevatedUntil?: string | null;
+}
+
+/** Première étape de connexion avec la double authentification : pas de session, un jeton d'étape. */
+export interface MfaChallenge {
+  mfaRequired: true;
+  challenge: string;
+}
+
+export interface MfaStatus {
+  enabled: boolean;
+  /** Obligatoire pour ce compte (le propriétaire de la plateforme). */
+  required: boolean;
+  recoveryCodesLeft: number;
+}
+
+export interface MfaSetup {
+  secret: string;
+  otpauthUrl: string;
 }
 
 export interface GroupSummary {

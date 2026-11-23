@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, Inject, Param, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
-import { Roles } from './guards';
+import { RequireElevation, Roles } from './guards';
 import { ResetService } from './reset.service';
 import { parseBody } from './schemas';
 
@@ -19,11 +19,13 @@ export class TicketsController {
   }
 
   /** Émet (ou remplace) le lien à usage unique à transmettre à la personne, par Plato. */
+  @RequireElevation()
   @Post(':id/issue')
   issue(@Param('id') id: string) {
     return this.reset.issue(parseBody(idSchema, id));
   }
 
+  @RequireElevation()
   @HttpCode(204)
   @Post(':id/close')
   async close(@Param('id') id: string) {

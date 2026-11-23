@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { api, ApiError, setCsrfToken } from '../api/client';
-import type { Session, User } from '../api/types';
+import type { MfaChallenge, Session, User } from '../api/types';
 
 interface Auth {
   /** `undefined` tant qu'on ne sait pas, `null` si personne n'est connecté. */
   user: User | null | undefined;
-  login: (username: string, password: string) => Promise<void>;
+  /**
+   * Première étape. Renvoie un jeton d'étape si le compte a la double authentification (rien n'est
+   * connecté alors : il faut loginWithCode), sinon 
+ull et la session est ouverte.
+   */
+  login: (username: string, password: string) => Promise<MfaChallenge | null>;
+  /** Seconde étape : le code de l'application ou un code de secours. */
+  loginWithCode: (challenge: string, code: string) => Promise<void>;
+  /** Fin de la période où les actions sensibles se font sans redonner le code. */
+  elevatedUntil: string | null;
   logout: () => Promise<void>;
   /** Accepte une invitation avec un nouveau compte : le crée et ouvre la session. */
   accept: (input: {
@@ -43,10 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: (v: { username: string; password: string }) =>
-      api<Session>('POST', '/auth/login', v),
+      api<Session | MfaChallenge>('POST', '/auth/login', v),
+    onSuccess: (result) => {
+      if ('mfaRequired' in result) return; // pas de session : le code reste à donner
+      setCsrfToken(result.csrfToken);
+      // Cache neuf : rien d'un compte précédent ne reste affiché.
+      client.clear();
+      client.setQueryData(ME, result);
+    },
+  });
+  const codeMutation = useMutation({
+    mutationFn: (v: { challenge: string; code: string }) =>
+      api<Session>('POST', '/auth/login/mfa', v),
     onSuccess: (session) => {
       setCsrfToken(session.csrfToken);
-      // Cache neuf : rien d'un compte précédent ne reste affiché.
       client.clear();
       client.setQueryData(ME, session);
     },
@@ -73,8 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: me.isPending ? undefined : (me.data?.user ?? null),
       login: async (username, password) => {
-        await loginMutation.mutateAsync({ username, password });
+        const result = await loginMutation.mutateAsync({ username, password });
+        return 'mfaRequired' in result ? result : null;
       },
+      loginWithCode: async (challenge, code) => {
+        await codeMutation.mutateAsync({ challenge, code });
+      },
+      elevatedUntil: me.data?.elevatedUntil ?? null,
       logout: async () => {
         await logoutMutation.mutateAsync().catch(() => undefined);
       },
@@ -85,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await client.invalidateQueries({ queryKey: ME });
       },
     }),
-    [me.isPending, me.data, loginMutation, logoutMutation, acceptMutation, client],
+    [me.isPending, me.data, loginMutation, codeMutation, logoutMutation, acceptMutation, client],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

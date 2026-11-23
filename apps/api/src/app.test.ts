@@ -13,6 +13,7 @@ const config: AppConfig = {
   webOrigin: 'http://localhost:5173',
   sessionCookieSecure: false,
   trustProxy: 0,
+  totpEncryptionKey: Buffer.alloc(32, 7),
 };
 
 async function start(
