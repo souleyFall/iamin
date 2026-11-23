@@ -62,6 +62,7 @@ model User {
   feedbacks          Feedback[]
   recoveryCodes      RecoveryCode[]
   mfaChallenges      MfaChallenge[]
+  securityEvents     SecurityEvent[]
 }
 
 /// Code de secours de la double authentification : à usage unique, seule son empreinte est stockée.
@@ -221,6 +222,9 @@ model Session {
   /// Jusqu'à quand les actions sensibles sont permises sans redonner le code (10 minutes après
   /// une connexion avec code ou une ressaisie).
   elevatedUntil DateTime?
+  /// Navigateur et système, en clair pour le propriétaire du compte (« Chrome · Windows »), jamais le
+  /// texte brut de l'agent utilisateur ni l'adresse IP.
+  device        String?
 
   @@index([userId])
   @@index([expiresAt])
@@ -331,4 +335,33 @@ model Feedback {
 
   @@index([status, createdAt])
   @@index([authorId])
+}
+
+enum SecurityEventType {
+  LOGIN_OK
+  LOGIN_FAILED // mot de passe faux sur ce compte (au plus un par 10 minutes)
+  MFA_FAILED // code faux (au plus un par 10 minutes)
+  ACCOUNT_LOCKED
+  MFA_ENABLED
+  RECOVERY_USED
+  RECOVERY_REGENERATED
+  PASSWORD_CHANGED
+  PASSWORD_RESET // mot de passe changé avec un lien de réinitialisation
+  RESET_LINK_ISSUED // le propriétaire a émis un lien de réinitialisation pour ce compte
+  SESSIONS_REVOKED
+  CREATOR_INVITED // le propriétaire a invité un super admin
+}
+
+/// Journal de sécurité d'un compte, lisible par son titulaire seulement. Ni adresse IP ni agent
+/// utilisateur brut : un type, un appareil lisible et une date. Purgé au bout de 30 jours.
+model SecurityEvent {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @db.Uuid
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      SecurityEventType
+  device    String?
+  createdAt DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }

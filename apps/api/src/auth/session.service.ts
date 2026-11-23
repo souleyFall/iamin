@@ -71,7 +71,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
   async create(
     userId: string,
     now = new Date(),
-    options: { role?: Role; elevated?: boolean } = {},
+    options: { role?: Role; elevated?: boolean; device?: string } = {},
   ): Promise<CreatedSession> {
     const token = newToken();
     const csrfToken = newToken();
@@ -86,6 +86,7 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
         expiresAt,
         lastSeenAt: now,
         elevatedUntil,
+        device: options.device ?? null,
       },
     });
     return { token, csrfToken, expiresAt, elevatedUntil };
@@ -130,6 +131,27 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     const elevatedUntil = new Date(now.getTime() + ELEVATION_MS);
     await this.prisma.session.updateMany({ where: { id: sessionId }, data: { elevatedUntil } });
     return elevatedUntil;
+  }
+
+  /** Sessions ouvertes d'un compte, la plus récente d'abord ; `current` repère celle qui fait la demande. */
+  async listForUser(userId: string, currentSessionId: string, now = new Date()) {
+    const rows = await this.prisma.session.findMany({
+      where: { userId, expiresAt: { gt: now } },
+      orderBy: { lastSeenAt: 'desc' },
+      select: { id: true, device: true, createdAt: true, lastSeenAt: true },
+    });
+    return rows.map((r) => ({ ...r, current: r.id === currentSessionId }));
+  }
+
+  /** Ferme une autre session du compte (jamais celle en cours : pour elle, la déconnexion). */
+  async destroyOther(
+    userId: string,
+    sessionId: string,
+    currentSessionId: string,
+  ): Promise<boolean> {
+    if (sessionId === currentSessionId) return false;
+    const { count } = await this.prisma.session.deleteMany({ where: { id: sessionId, userId } });
+    return count === 1;
   }
 
   async destroy(sessionId: string): Promise<void> {

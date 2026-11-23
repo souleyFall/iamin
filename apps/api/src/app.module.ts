@@ -11,6 +11,7 @@ import {
   RolesGuard,
 } from './auth/guards';
 import { MfaService } from './auth/mfa.service';
+import { SecurityService } from './auth/security.service';
 import { CreatorInvitationsController } from './auth/creator-invitations.controller';
 import { InvitationsController } from './auth/invitations.controller';
 import { InvitationsService } from './auth/invitations.service';
@@ -74,6 +75,7 @@ export class AppModule {
         SessionService,
         AuthService,
         MfaService,
+        SecurityService,
         InvitationsService,
         ResetService,
         GroupsService,

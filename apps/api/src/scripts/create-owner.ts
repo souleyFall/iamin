@@ -12,7 +12,12 @@
 import { PrismaClient, Role } from '@prisma/client';
 import { ZodError } from 'zod';
 import { hashPassword } from '../auth/crypto';
-import { passwordSchema, platoUsernameSchema, usernameSchema } from '../auth/schemas';
+import {
+  ownerPasswordProblem,
+  passwordSchema,
+  platoUsernameSchema,
+  usernameSchema,
+} from '../auth/schemas';
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -35,6 +40,9 @@ async function main(): Promise<void> {
   const username = usernameSchema.parse(rawUsername);
   const platoUsername = platoUsernameSchema.parse(rawPlato);
   const password = passwordSchema.parse(rawPassword);
+  // Le compte propriétaire est le plus exposé : 16 caractères au moins, sans son identifiant.
+  const weak = ownerPasswordProblem(username, password);
+  if (weak) throw new Error(weak);
 
   const prisma = new PrismaClient({ datasourceUrl: databaseUrl });
   try {

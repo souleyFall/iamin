@@ -14,6 +14,23 @@ export const passwordSchema = z
   .min(12, '12 caractères au minimum')
   .max(128, '128 caractères au maximum');
 
+/** Longueur minimale du mot de passe du propriétaire de la plateforme (12 pour les autres comptes). */
+export const OWNER_PASSWORD_MIN = 16;
+
+/**
+ * Règles en plus pour le compte propriétaire : 16 caractères au moins, et pas son identifiant ni son
+ * pseudo Plato (ce que quelqu'un essaierait en premier). `null` si le mot de passe convient.
+ */
+export function ownerPasswordProblem(username: string, password: string): string | null {
+  if (password.length < OWNER_PASSWORD_MIN) {
+    return `${OWNER_PASSWORD_MIN} caractères au moins pour le propriétaire`;
+  }
+  if (password.toLowerCase().includes(username.toLowerCase())) {
+    return 'Le mot de passe ne doit pas contenir ton identifiant';
+  }
+  return null;
+}
+
 export const platoUsernameSchema = z
   .string()
   .trim()

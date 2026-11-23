@@ -11,6 +11,7 @@ import type { AppConfig } from '../config';
 import { APP_CONFIG } from '../config.token';
 import { PrismaService } from '../prisma.service';
 import { hashPassword, newToken, sha256 } from './crypto';
+import { SecurityService } from './security.service';
 import { type AuthUser, type CreatedSession, SessionService, toAuthUser } from './session.service';
 
 export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -39,6 +40,7 @@ export class InvitationsService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(SecurityService) private readonly security: SecurityService,
   ) {}
 
   /**
@@ -74,8 +76,15 @@ export class InvitationsService {
   }
 
   /** Le propriétaire invite un super admin : une invitation sans groupe, qui donne le droit d'en créer. */
-  createCreator(createdById: string, platoUsername: string): Promise<CreatedInvitation> {
-    return this.create({ groupId: null, groupRole: null, platoUsername, createdById });
+  async createCreator(createdById: string, platoUsername: string): Promise<CreatedInvitation> {
+    const created = await this.create({
+      groupId: null,
+      groupRole: null,
+      platoUsername,
+      createdById,
+    });
+    await this.security.record(createdById, 'CREATOR_INVITED');
+    return created;
   }
 
   /** Invitations de super admins en attente (jamais leurs jetons). */

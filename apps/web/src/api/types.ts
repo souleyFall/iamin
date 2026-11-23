@@ -1,4 +1,4 @@
-﻿import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine';
+import type { LeagueMatch, ResolvedMatch, Score, Standings } from '@iamin/engine';
 
 /** Formes des réponses de l'API (voir apps/api). Écrites à la main : l'API est la référence. */
 
@@ -37,6 +37,37 @@ export interface MfaStatus {
   /** Obligatoire pour ce compte (le propriétaire de la plateforme). */
   required: boolean;
   recoveryCodesLeft: number;
+}
+
+export interface SessionInfo {
+  id: string;
+  /** « Chrome · Windows » : navigateur et système, jamais l'adresse IP. */
+  device: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  /** La session qui fait la demande. */
+  current: boolean;
+}
+
+export type SecurityEventType =
+  | 'LOGIN_OK'
+  | 'LOGIN_FAILED'
+  | 'MFA_FAILED'
+  | 'ACCOUNT_LOCKED'
+  | 'MFA_ENABLED'
+  | 'RECOVERY_USED'
+  | 'RECOVERY_REGENERATED'
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_RESET'
+  | 'RESET_LINK_ISSUED'
+  | 'SESSIONS_REVOKED'
+  | 'CREATOR_INVITED';
+
+export interface SecurityEvent {
+  id: string;
+  type: SecurityEventType;
+  device: string | null;
+  createdAt: string;
 }
 
 export interface MfaSetup {

@@ -18,7 +18,7 @@ Hors périmètre : les services tiers (Plato, hébergeur), les attaques supposan
 
 ## Mesures en place
 
-Contrôle d'accès par groupe vérifié côté serveur, sessions révocables, mots de passe argon2id, double authentification (TOTP) obligatoire pour le propriétaire de la plateforme et ressaisie du code avant ses actions sensibles, protection CSRF, limites de débit sur toutes les routes publiques, CSP stricte, HTTPS automatique, aucun journal d'accès, sauvegardes de 30 jours. Le détail, les risques acceptés et l'audit de la version 0.1.0 sont dans le [registre des risques](docs/securite/registre-risques.md) ; le traitement des données personnelles, dans le [registre RGPD](docs/rgpd/registre-traitements.md).
+Contrôle d'accès par groupe vérifié côté serveur, sessions révocables, mots de passe argon2id, double authentification (TOTP) obligatoire pour le propriétaire de la plateforme et ressaisie du code avant ses actions sensibles, sessions actives et journal de sécurité consultables par chaque titulaire, protection CSRF, limites de débit sur toutes les routes publiques, CSP stricte, HTTPS automatique, aucun journal d'accès, sauvegardes de 30 jours. Le détail, les risques acceptés et l'audit de la version 0.1.0 sont dans le [registre des risques](docs/securite/registre-risques.md) ; le traitement des données personnelles, dans le [registre RGPD](docs/rgpd/registre-traitements.md).
 
 ## Ce qu'il ne faut jamais publier
 

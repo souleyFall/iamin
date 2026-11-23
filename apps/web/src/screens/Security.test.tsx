@@ -180,6 +180,91 @@ describe('activation obligatoire pour le propriétaire', () => {
   });
 });
 
+describe('sessions et activité', () => {
+  const owner = () => {
+    handlers['GET /auth/me'] = () => ({ body: me('PLATFORM_OWNER', true, true) });
+    handlers['GET /groups'] = () => ({ body: [] });
+    handlers['GET /auth/mfa'] = () => ({
+      body: { enabled: true, required: true, recoveryCodesLeft: 10 },
+    });
+  };
+
+  it('liste les sessions, repère la mienne, et ferme une autre après confirmation', async () => {
+    owner();
+    let rows = [
+      {
+        id: 's1',
+        device: 'Chrome · Windows',
+        createdAt: '2026-11-24T08:00:00Z',
+        lastSeenAt: '2026-11-24T09:00:00Z',
+        current: true,
+      },
+      {
+        id: 's2',
+        device: 'Safari · iOS',
+        createdAt: '2026-11-23T08:00:00Z',
+        lastSeenAt: '2026-11-23T09:00:00Z',
+        current: false,
+      },
+    ];
+    handlers['GET /auth/sessions'] = () => ({ body: rows });
+    handlers['GET /auth/activity'] = () => ({ body: [] });
+    handlers['DELETE /auth/sessions/s2'] = () => {
+      rows = rows.filter((r) => r.id !== 's2');
+      return { status: 204 };
+    };
+    const u = renderApp('/securite');
+    expect(await screen.findByText('Safari · iOS')).toBeTruthy();
+    expect(screen.getByText('CETTE SESSION')).toBeTruthy();
+    // Pas de bouton « Fermer » pour la session en cours : il y a la déconnexion.
+    expect(screen.getAllByRole('button', { name: 'Fermer' })).toHaveLength(1);
+    await u.click(screen.getByRole('button', { name: 'Fermer' }));
+    expect(calls.some((c) => c.key === 'DELETE /auth/sessions/s2')).toBe(false);
+    await u.click(screen.getByRole('button', { name: 'Fermer la session' }));
+    await waitFor(() => expect(calls.some((c) => c.key === 'DELETE /auth/sessions/s2')).toBe(true));
+    await waitFor(() => expect(screen.queryByText('Safari · iOS')).toBeNull());
+  });
+
+  it('affiche le journal et signale ce qui est à vérifier, sans adresse IP', async () => {
+    owner();
+    handlers['GET /auth/sessions'] = () => ({ body: [] });
+    handlers['GET /auth/activity'] = () => ({
+      body: [
+        {
+          id: 'e1',
+          type: 'LOGIN_FAILED',
+          device: 'Firefox · Linux',
+          createdAt: '2026-11-24T09:00:00Z',
+        },
+        {
+          id: 'e2',
+          type: 'LOGIN_OK',
+          device: 'Chrome · Windows',
+          createdAt: '2026-11-24T08:00:00Z',
+        },
+        { id: 'e3', type: 'RESET_LINK_ISSUED', device: null, createdAt: '2026-11-23T08:00:00Z' },
+      ],
+    });
+    renderApp('/securite');
+    expect(await screen.findByText('Mot de passe incorrect')).toBeTruthy();
+    expect(screen.getByText('Connexion réussie')).toBeTruthy();
+    expect(screen.getByText('Lien de réinitialisation émis pour ce compte')).toBeTruthy();
+    // Deux événements sur trois sont à vérifier ; une connexion réussie ne l'est pas.
+    expect(screen.getAllByText('À VÉRIFIER')).toHaveLength(2);
+  });
+
+  it('un propriétaire qui n’a pas activé la double authentification ne voit ni sessions ni journal', async () => {
+    handlers['GET /auth/me'] = () => ({ body: me('PLATFORM_OWNER', false) });
+    handlers['GET /auth/mfa'] = () => ({
+      body: { enabled: false, required: true, recoveryCodesLeft: 0 },
+    });
+    renderApp('/securite');
+    await screen.findByRole('button', { name: 'Commencer' });
+    expect(calls.some((c) => c.key === 'GET /auth/sessions')).toBe(false);
+    expect(calls.some((c) => c.key === 'GET /auth/activity')).toBe(false);
+  });
+});
+
 describe('ressaisie du code avant une action sensible', () => {
   it('bloque la création d’un lien tant que le code n’est pas redonné', async () => {
     let elevated = false;
