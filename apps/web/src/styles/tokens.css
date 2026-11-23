@@ -1,0 +1,67 @@
+/* i-am-in : jetons de design. Direction « pendule » : boîtier bleu nuit, écran LCD rétroéclairé,
+   touches larges. Deux thèmes ; l'écran LCD reste sombre dans les deux.
+   Source : la maquette (canvas « i-am-in — Design de l'app », fichier tokens.css). */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #08111f;
+  --panel: #0f1c33;
+  --raised: #16284a;
+  --line: #223a63;
+  --text: #eaf2ff;
+  --muted: #93a9cc;
+  --action: #2a62f5;
+  --action-ink: #ffffff;
+  --action-edge: #1b45b8;
+  --link: #7fb0ff;
+  --accent: #ffb224;
+  --accent-ink: #1a1200;
+  --accent-text: #ffb224;
+  --ok: #4fe3c1;
+  --ok-bg: #0b3340;
+  --bad: #ff8196;
+  --bad-bg: #3a1830;
+  --screen: #050c18;
+  --lcd: #bfe6ff;
+  --lcd-ghost: rgba(191, 230, 255, 0.1);
+  --lcd-label: #93a9cc;
+  --nav: #0b162a;
+  --dim: rgba(3, 8, 18, 0.74);
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  --focus: #7fb0ff;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #edf2fa;
+  --panel: #ffffff;
+  --raised: #e1e9f6;
+  --line: #c9d6ec;
+  --text: #0a1830;
+  --muted: #475e86;
+  --action: #1f56e8;
+  --action-ink: #ffffff;
+  --action-edge: #153fb0;
+  --link: #1f56e8;
+  --accent: #ffb224;
+  --accent-ink: #1a1200;
+  --accent-text: #8a5200;
+  --ok: #0b7f6a;
+  --ok-bg: #d7f3ec;
+  --bad: #c22c4b;
+  --bad-bg: #fbe0e6;
+  --screen: #0a1a33;
+  --lcd: #bfe6ff;
+  --lcd-ghost: rgba(191, 230, 255, 0.1);
+  --lcd-label: #93a9cc;
+  --nav: #ffffff;
+  --dim: rgba(10, 24, 48, 0.55);
+  --shadow: 0 10px 24px rgba(20, 50, 110, 0.16);
+  --focus: #1f56e8;
+}
+
+:root {
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', system-ui, sans-serif;
+  --font-lcd: 'Doto Variable', ui-monospace, monospace;
+}

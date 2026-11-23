@@ -29,6 +29,13 @@ pnpm --filter @iamin/api exec prisma migrate deploy   # crée les tables
 pnpm --filter @iamin/api start    # puis http://localhost:3000/health
 ```
 
+Lancer l'interface admin (l'API doit tourner ; si le port 3000 est pris, lance l'API avec `PORT` et indique-le à l'interface) :
+
+```bash
+cp apps/web/.env.example apps/web/.env   # facultatif : VITE_API_URL (défaut http://localhost:3000)
+pnpm --filter @iamin/web dev             # puis http://localhost:5173 (WEB_ORIGIN de l'API doit être cette adresse exacte)
+```
+
 Créer le compte du propriétaire (le premier compte : personne ne peut l'inviter). Le mot de passe passe par une variable d'environnement, jamais par un argument, pour ne rester ni dans la liste des processus ni dans l'historique du terminal :
 
 ```powershell

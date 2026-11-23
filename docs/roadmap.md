@@ -17,7 +17,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 9   | `feat(matches)` : tirage, scores, forfaits, remplacements                         | fusionnée |
 | 10  | `feat(relay)` : relais entre admins, journal d'événements                         | fusionnée |
 | 11  | `feat(live)` : page publique et SSE                                               | fusionnée |
-| 12  | `feat(web)` : interface admin (jetons de design, écrans de la maquette)           | prévue    |
+| 12  | `feat(web)` : interface admin (jetons de design, écrans de la maquette)           | en cours  |
 | 13  | `feat(web)` : interface publique, PWA installable                                 | prévue    |
 | 14  | `chore(deploy)` : images Docker, Compose de production, HTTPS, sauvegardes        | prévue    |
 | 15  | `docs(security)` : audit final, registre des risques, registre des traitements    | prévue    |

@@ -122,3 +122,13 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Le message ne contient que la révision** (nombre d'événements). Le client recharge `view`, dont la révision est lue AVANT la vue : si elle est plus petite que celle annoncée, il sait qu'il doit relire. Repli du client : relire `view` toutes les 10 s si le flux est coupé.
 - **Plafonds (R17)** : 500 flux ouverts au total, 200 par tournoi (503 au-delà), 20 ouvertures par minute et par IP, 60 lectures de `view`. Une connexion se ferme d'elle-même après 30 minutes (le navigateur se reconnecte seul) et un message de maintien part toutes les 25 s.
 - **Visibilité** : un inscrit validé apparaît sous son pseudo Plato sur la page publique ; un inscrit en attente jamais. Annuler ou retirer un joueur le retire de la page à la lecture suivante.
+
+## D19. Interface admin (apps/web)
+
+- **React 19 + Vite, mobile d'abord** : la maquette est un téléphone (390 px). Routes : connexion, tournois du groupe, création, puis un écran par tournoi avec les onglets Inscrits, Pointage, Tirage, En jeu, Journal, et « Copier pour le chat ». Les données du serveur passent par TanStack Query (relues après chaque écriture et toutes les 5 s : un autre admin peut avoir changé quelque chose) ; l'état d'interface reste local.
+- **Jetons de design** repris tels quels de la maquette (`tokens.css`, thèmes sombre et clair, écran LCD toujours sombre). Les polices (Barlow, Barlow Condensed, Doto) sont **servies par l'application** (`@fontsource`), pas par Google Fonts : aucune requête vers un tiers, donc pas d'adresse IP de l'admin envoyée ailleurs (RGPD) et une future CSP plus stricte.
+- **Authentification côté navigateur** : le cookie de session est `httpOnly` (invisible pour le JavaScript) ; le jeton CSRF est gardé **en mémoire seulement**, redemandé à `/auth/me` au rechargement. Rien de secret dans `localStorage` (seulement le thème et le dernier groupe).
+- **Lecture seule sans la main** (D5, D17) : tous les boutons d'écriture sont désactivés quand on ne tient pas la main, et l'écran dit pourquoi. L'API reste la seule autorité (elle répond 403) ; l'interface ne fait qu'éviter l'erreur.
+- **Texte du chat** : produit par `@iamin/engine` (pseudos nettoyés), jamais recomposé côté interface. Le moteur est une dépendance CommonJS : `vite.config.ts` le convertit.
+- **Pas de HTML injecté** : React échappe tout ; aucun `dangerouslySetInnerHTML` (R10).
+- **Hors périmètre de cette PR** : page publique d'inscription et PWA installable (PR 13), CSP et hébergement (PR 14), invitations d'admins par l'interface.
