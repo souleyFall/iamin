@@ -62,6 +62,30 @@ describe('API', () => {
       expect(other.headers.get('access-control-allow-origin')).toBe(config.webOrigin);
       expect(other.headers.get('access-control-allow-origin')).not.toBe('https://evil.example');
     });
+
+    it('laisse passer les en-têtes dont l’interface a besoin, et seulement eux', async () => {
+      // Le navigateur demande d'abord la permission (préambule) avant d'envoyer l'en-tête.
+      // `x-player-token` : suivi de l'inscription d'un joueur sans compte. Sans lui, la page
+      // publique ne peut pas lire le statut du joueur (bug trouvé à l'essai réel).
+      const preflight = (headers: string) =>
+        fetch(`${url}/health`, {
+          method: 'OPTIONS',
+          headers: {
+            origin: config.webOrigin,
+            'access-control-request-method': 'DELETE',
+            'access-control-request-headers': headers,
+          },
+        });
+      const allowed = await preflight('x-player-token, content-type, x-csrf-token');
+      const list = (allowed.headers.get('access-control-allow-headers') ?? '').toLowerCase();
+      for (const name of ['x-player-token', 'content-type', 'x-csrf-token']) {
+        expect(list).toContain(name);
+      }
+      // Pas de joker : un en-tête quelconque n'est pas annoncé comme permis.
+      expect(list).not.toContain('*');
+      expect(list).not.toContain('x-anything-else');
+      expect(allowed.headers.get('access-control-allow-methods')).toContain('DELETE');
+    });
   });
 
   it('répond 503 sans détail quand la base est injoignable', async () => {

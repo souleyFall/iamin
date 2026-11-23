@@ -107,6 +107,35 @@ export type DrawView = BracketView | LeagueView;
 
 export const isBracketView = (v: DrawView): v is BracketView => 'bracket' in v;
 
+// ---- Pages publiques (sans compte) -------------------------------------------------------------
+
+/** Ce que la page publique lit : jamais d'inscription en attente, de jeton ni de détenteur. */
+export interface PublicHead {
+  name: string;
+  format: TournamentFormat;
+  status: TournamentStatus;
+  registrationOpen: boolean;
+  revision: number;
+}
+
+export type PublicView =
+  | (PublicHead & {
+      drawn: false;
+      players: { id: string; platoName: string; status: RegistrationStatus }[];
+    })
+  | (PublicHead & Omit<BracketView, 'versions'> & { drawn: true })
+  | (PublicHead & Omit<LeagueView, 'versions'> & { drawn: true });
+
+/** L'inscription du joueur, retrouvée grâce à son lien personnel. */
+export interface MyRegistration {
+  id: string;
+  platoName: string;
+  status: RegistrationStatus;
+  presence: Presence;
+  waitlistPosition: number | null;
+  tournament: { name: string; status: TournamentStatus };
+}
+
 // ---- Journal -----------------------------------------------------------------------------------
 
 export interface JournalEvent {

@@ -1,0 +1,22 @@
+{
+  "name": "i-am-in",
+  "short_name": "i-am-in",
+  "description": "Tournois Plato : inscriptions, tirage, scores et direct. Outil indépendant, non affilié à Plato.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08111F",
+  "theme_color": "#08111F",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

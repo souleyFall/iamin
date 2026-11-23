@@ -14,7 +14,8 @@ export function setupApp(app: INestApplication, config: AppConfig): void {
     origin: config.webOrigin, // une seule origine exacte, jamais `*`
     credentials: true, // le cookie de session accompagne les appels de l'interface
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['content-type', 'x-csrf-token'],
+    // `x-player-token` : le lien personnel d'un joueur sans compte (suivi et annulation de son inscription).
+    allowedHeaders: ['content-type', 'x-csrf-token', 'x-player-token'],
     maxAge: 600,
   });
   app.enableShutdownHooks();

@@ -53,8 +53,13 @@ export function describeError(status: number, body: unknown): ApiError {
   return new ApiError(status, message, fields);
 }
 
-export async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
+export async function api<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
+  const headers: Record<string, string> = { ...extraHeaders };
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (csrfToken !== undefined && method !== 'GET') headers['x-csrf-token'] = csrfToken;
 
