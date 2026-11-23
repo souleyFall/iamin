@@ -8,7 +8,7 @@
 #   docker build --target web -t iamin-web .
 
 # ---- Base : Node et pnpm (version lue dans package.json via corepack) ----
-FROM node:24-slim AS base
+FROM node:26-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -51,7 +51,7 @@ COPY --from=build /app/packages/engine/dist packages/engine/dist
 COPY --from=build /app/apps/api/dist apps/api/dist
 
 # ---- api : image d'exécution ----
-FROM node:24-slim AS api
+FROM node:26-slim AS api
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
