@@ -1,4 +1,4 @@
-﻿# Feuille de route
+# Feuille de route
 
 Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à jour à chaque fusion.
 
@@ -23,6 +23,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 15  | `docs(security)` : audit final, registre des risques, registre des traitements     | fusionnée |
 | 16  | `feat(groups)` : le propriétaire valide les super admins, qui créent leurs groupes | fusionnée |
 | 17  | `feat(groups)` : pseudo Plato imposé par l'invitation                              | fusionnée |
+| 18  | `feat(feedback)` : retours des utilisateurs (idées, améliorations, bugs)           | fusionnée |
 
 ## Après
 

@@ -169,3 +169,13 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Assistance conservée** : le propriétaire peut toujours réinviter un super admin dans un groupe existant (D14), par exemple si son créateur a perdu son compte.
 - **Interface** : le propriétaire invite depuis l'onglet Moi, le super admin crée ses groupes et invite ses admins depuis l'onglet Groupe, et la page `/invitation/<jeton>` crée le compte (ou rejoint avec le compte connecté).
 - **Garde-fous** : `route-policy.test.ts` vérifie que `POST /groups` exige `GROUP_CREATOR` et que les routes `/creator-invitations` exigent le propriétaire.
+
+## D23. Retours des utilisateurs
+
+- **Qui écrit** : tout le monde. Un admin connecté écrit avec son compte (`POST /feedback`, limité à 5 par minute), un joueur sans compte écrit anonymement (`POST /public/feedback`, limité à 3 par minute et par adresse). Un pseudo Plato de contact est facultatif et seulement proposé aux joueurs sans compte.
+- **Ce qu'on envoie** : un type (idée, amélioration, bug, autre) et un message de 2 000 caractères au plus ; les retours à la ligne sont gardés, tout autre caractère de contrôle ou invisible est refusé.
+- **Qui lit** : le propriétaire de la plateforme seulement (`/retours`, onglet Moi) : filtre par statut (nouveau, lu, traité), changement de statut, suppression, purge. Les super admins et les admins ne voient aucun retour, pas même les leurs. Gardé par `route-policy.test.ts`.
+- **Pas d'e-mail** (D13) : pas de notification ni de réponse automatique. Le propriétaire répond, s'il le souhaite, par Plato avec le pseudo laissé.
+- **Protection** : limite de débit, plafond de 500 retours non traités pour les envois anonymes (503 au-delà, les admins ne sont pas concernés), message affiché comme du texte (testé avec du HTML) : risque R30.
+- **Conservation** (RGPD, traitement 6) : un retour traité depuis plus d'un an est supprimé par le bouton « Purger » du propriétaire. Il n'y a pas de tâche planifiée : la purge est manuelle, à faire au moins une fois par an. Supprimer un compte admin garde ses retours, sans auteur.
+- **Hors périmètre** : réponse aux utilisateurs dans l'application, votes, vues publiques des retours (feuille de route 0.6.0).

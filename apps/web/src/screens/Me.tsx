@@ -24,10 +24,18 @@ export function Me() {
           {user?.role === 'GROUP_CREATOR' && <span className="tag tag-live">SUPER ADMIN</span>}
         </div>
         {user?.role === 'PLATFORM_OWNER' && (
-          <Link className="btn btn-accent" to="/super-admins">
-            Inviter un super admin
-          </Link>
+          <>
+            <Link className="btn btn-accent" to="/super-admins">
+              Inviter un super admin
+            </Link>
+            <Link className="btn" to="/retours">
+              Retours des utilisateurs
+            </Link>
+          </>
         )}
+        <Link className="btn" to="/avis">
+          Donner mon avis
+        </Link>
         <div className="field">
           <span className="section-title" style={{ fontSize: 20 }}>
             Thème

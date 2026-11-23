@@ -64,6 +64,18 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | Protection   | Dossier `backups/` ignoré par Git, lisible par son propriétaire seul (`umask 077`) ; la copie hors du serveur doit être chiffrée                                                                  |
 | Droits       | Un joueur effacé de la base reste dans les sauvegardes jusqu'à leur suppression, soit 30 jours au plus ; une restauration ne remet jamais une personne effacée en ligne sans nouvelle suppression |
 
+## Traitement 6 : retours des utilisateurs
+
+|              |                                                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Finalité     | Recueillir les propositions, améliorations et signalements de bugs pour faire évoluer l'outil                                                                                                                                        |
+| Données      | Type, message libre (2 000 caractères au plus), date, état ; pour un admin son compte (auteur) ; pour un joueur sans compte, son pseudo Plato seulement s'il choisit de le laisser. Aucune adresse IP ni e-mail                      |
+| Base légale  | Intérêt légitime (améliorer le service) ; le pseudo facultatif relève du consentement de la personne qui le saisit                                                                                                                   |
+| Accès        | Le propriétaire de la plateforme seulement : ni les super admins ni les admins ne lisent les retours des autres                                                                                                                      |
+| Conservation | Retours traités : supprimés au bout d'un an (bouton « Purger » du propriétaire, à utiliser au moins une fois par an) ; les autres restent tant qu'ils ne sont pas traités. Le propriétaire peut supprimer un retour à tout moment    |
+| Minimisation | Les joueurs écrivent sans compte et anonymement ; le message libre peut contenir des données personnelles que la personne y met : l'écran le rappelle, et la suppression à la demande est possible (le propriétaire efface la ligne) |
+| Droits       | Un joueur anonyme ne peut pas être retrouvé s'il n'a pas laissé de pseudo ; s'il en a laissé un, il demande la suppression au propriétaire. À la suppression d'un compte admin, ses retours restent mais n'ont plus d'auteur         |
+
 ## Hors dépôt
 
 - **Journaux d'accès du serveur web** : désactivés. Caddy n'écrit que ses erreurs (`deploy/Caddyfile`), donc aucune adresse IP n'est conservée. L'API ne voit l'adresse qu'en mémoire, pour limiter le débit (D21).
