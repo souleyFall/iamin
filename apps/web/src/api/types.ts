@@ -151,6 +151,8 @@ export interface TournamentSummary {
   status: TournamentStatus;
   publicSlug: string;
   forfeitScore: number;
+  /** Ligue : un match peut finir à égalité. Toujours faux en élimination directe. */
+  allowDraws: boolean;
   language: TournamentLanguage;
   createdAt: string;
   drawnAt: string | null;
@@ -182,6 +184,7 @@ interface DrawCommon {
   drawnAt: string | null;
   initialPlayers: string[];
   forfeitScore: number;
+  allowDraws: boolean;
   players: DrawPlayer[];
   /** Version de chaque score : à renvoyer en le corrigeant. */
   versions: Record<string, number>;
@@ -246,4 +249,6 @@ export interface JournalEvent {
 export interface Journal {
   events: JournalEvent[];
   nextBefore: string | null;
+  /** Noms retrouvés à la lecture (jamais copiés dans le journal) : joueurs et admins cités. */
+  refs: { players: Record<string, string>; users: Record<string, string> };
 }

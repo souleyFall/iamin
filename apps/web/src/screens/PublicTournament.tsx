@@ -156,15 +156,19 @@ function Results({ view }: { view: PublicView }) {
             {t('play.champion', { name: nameOf(draw.champion) })}
           </p>
         )}
-        <ul>
-          {round.lines.map((l, i) => (
-            <li key={l.code}>
-              <div className="match">
-                <MatchContent line={l} position={i + 1} nameOf={nameOf} />
-              </div>
-            </li>
-          ))}
-        </ul>
+        {/* Tant que le joueur n'a pas choisi de tour, la page suit le jeu : quand un tour se termine
+            elle passe au suivant d'elle-même, avec une transition douce. */}
+        <div key={index} className="round-enter">
+          <ul>
+            {round.lines.map((l, i) => (
+              <li key={l.code}>
+                <div className="match">
+                  <MatchContent line={l} position={i + 1} nameOf={nameOf} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
         {round.rest && <p className="muted">{t('play.rest', { name: nameOf(round.rest) })}</p>}
         {!isBracketView(draw) && <StandingsTable standings={draw.standings} nameOf={nameOf} />}
         {draw.seed && (

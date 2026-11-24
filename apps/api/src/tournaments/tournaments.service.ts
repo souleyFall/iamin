@@ -78,13 +78,17 @@ export class TournamentsService {
       capacity: number;
       forfeitScore?: number;
       language?: TournamentLanguage;
+      /** Ligue : un match peut finir à égalité. Sans effet (toujours faux) en élimination directe. */
+      allowDraws?: boolean;
     },
   ) {
     assertLeagueSize(input.format, input.capacity);
+    const allowDraws = input.format === 'LEAGUE' && input.allowDraws === true;
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.tournament.create({
         data: {
           ...input,
+          allowDraws,
           groupId,
           holderId: actorId,
           publicSlug: randomBytes(16).toString('base64url'),
@@ -94,6 +98,7 @@ export class TournamentsService {
       await this.events.record(tx, created.id, actorId, 'TOURNAMENT_CREATED', {
         format: input.format,
         capacity: input.capacity,
+        allowDraws,
       });
       return created;
     });
@@ -136,6 +141,8 @@ export class TournamentsService {
       forfeitScore?: number;
       /** Langue de la page des joueurs et du chat : modifiable à tout moment, même après le tirage. */
       language?: TournamentLanguage;
+      /** Ligue seulement, et avant le tirage : les scores à égalité sont-ils acceptés ? */
+      allowDraws?: boolean;
       status?: typeof TournamentStatus.REGISTRATION | typeof TournamentStatus.CHECK_IN;
     },
   ) {
@@ -145,6 +152,16 @@ export class TournamentsService {
       const drawn = !isOpen(tournament.status);
       if (drawn && (input.status !== undefined || input.capacity !== undefined)) {
         throw new ConflictException('Le tirage est fait : les places et la phase sont figées');
+      }
+      if (input.allowDraws !== undefined) {
+        if (drawn) throw new ConflictException('Le tirage est fait : les matchs nuls sont figés');
+        const { format } = await tx.tournament.findUniqueOrThrow({
+          where: { id: tournamentId },
+          select: { format: true },
+        });
+        if (format !== 'LEAGUE' && input.allowDraws) {
+          throw new BadRequestException('Les matchs nuls n’existent qu’en ligue');
+        }
       }
       if (input.capacity !== undefined) {
         const { format } = await tx.tournament.findUniqueOrThrow({
@@ -453,6 +470,7 @@ const tournamentSelect = {
   status: true,
   publicSlug: true,
   forfeitScore: true,
+  allowDraws: true,
   language: true,
   createdAt: true,
   drawnAt: true,

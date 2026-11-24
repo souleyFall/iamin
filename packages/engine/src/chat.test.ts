@@ -92,7 +92,9 @@ describe('élimination directe', () => {
     const done = resolveBracket(b, { R1M1: { a: 2, b: 1 } });
     const text = formatBracketResults(done, 1, names);
     expect(text).toMatch(/Résultats : Finale/);
-    expect(text).toMatch(/\d-\d/);
+    // Élimination directe : le vainqueur, jamais un score.
+    expect(text).toMatch(/Joueur\d bat Joueur\d/);
+    expect(text).not.toMatch(/\d-\d/);
     expect(text).toMatch(/Vainqueur du tournoi : Joueur\d/);
   });
 
@@ -153,5 +155,40 @@ describe('ligue', () => {
   it('refuse une journée inconnue', () => {
     expect(() => formatLeagueRound(league, 99, names)).toThrow(RangeError);
     expect(() => formatLeagueResults(league, {}, 0, names)).toThrow(RangeError);
+  });
+});
+
+describe('chat : élimination et nuls', () => {
+  it('l’élimination n’affiche que le vainqueur, dans les trois langues', () => {
+    const bracket = buildBracket(ids(2), 's');
+    const done = resolveBracket(bracket, { R1M1: { a: 1, b: 0 } });
+    const fr = formatBracketResults(done, 1, names, undefined, 'fr');
+    const en = formatBracketResults(done, 1, names, undefined, 'en');
+    const es = formatBracketResults(done, 1, names, undefined, 'es');
+    expect(fr).toMatch(/ bat /);
+    expect(en).toMatch(/ beat /);
+    expect(es).toMatch(/ vence a /);
+    for (const text of [fr, en, es]) expect(text).not.toMatch(/\d-\d/);
+  });
+
+  it('un nul de ligue s’écrit « match nul », « draw », « empate »', () => {
+    const league = buildLeague(ids(3), 's');
+    const first = league.rounds[0]?.[0];
+    const results = { [first!.id]: { a: 1, b: 1 } };
+    expect(formatLeagueResults(league, results, 1, names, undefined, 'fr')).toContain('1-1');
+    expect(formatLeagueResults(league, results, 1, names, undefined, 'fr')).toContain('match nul');
+    expect(formatLeagueResults(league, results, 1, names, undefined, 'en')).toContain('(draw)');
+    expect(formatLeagueResults(league, results, 1, names, undefined, 'es')).toContain('(empate)');
+  });
+
+  it('le classement ajoute le nombre de nuls seulement s’il y en a', () => {
+    const league = buildLeague(ids(3), 's');
+    const first = league.rounds[0]?.[0];
+    const none = computeStandings(league, { [first!.id]: { a: 2, b: 0 } });
+    expect(formatStandings(none, names)).not.toMatch(/\dN/);
+    const withTie = computeStandings(league, { [first!.id]: { a: 1, b: 1 } }, { allowDraws: true });
+    expect(formatStandings(withTie, names)).toMatch(/0V 1N 0D/);
+    expect(formatStandings(withTie, names, undefined, 'en')).toMatch(/0W 1D 0L/);
+    expect(formatStandings(withTie, names, undefined, 'es')).toMatch(/0G 1E 0P/);
   });
 });

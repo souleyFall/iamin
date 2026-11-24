@@ -47,6 +47,7 @@ const league = {
   drawnAt: '2026-11-22T20:00:00Z',
   initialPlayers: ['p1', 'p2'],
   forfeitScore: 1,
+  allowDraws: false,
   players: [
     { id: 'p1', platoName: 'Sana.fx', status: 'ACCEPTED' },
     { id: 'p2', platoName: 'Mehdi', status: 'ACCEPTED' },

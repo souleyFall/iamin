@@ -33,6 +33,10 @@ interface Phrases {
   matchday: (n: number, total: number) => string;
   rest: (player: string) => string;
   wins: (player: string) => string;
+  /** Match nul : le score est à égalité. */
+  drawn: string;
+  /** Élimination : pas de score, seulement le vainqueur. */
+  beats: (winner: string, loser: string) => string;
   resultsRound: (round: string) => string;
   resultsMatchday: (n: number, total: number) => string;
   noResults: string;
@@ -47,6 +51,7 @@ interface Phrases {
     wins: number,
     losses: number,
     diff: string,
+    draws: number,
   ) => string;
 }
 
@@ -66,6 +71,8 @@ const PHRASES: Record<Locale, Phrases> = {
     matchday: (n, total) => `Journée ${n}/${total}`,
     rest: (player) => `Repos : ${player}`,
     wins: (player) => `victoire de ${player}`,
+    drawn: 'match nul',
+    beats: (winner, loser) => `${winner} bat ${loser}`,
     resultsRound: (round) => `Résultats : ${round}`,
     resultsMatchday: (n, total) => `Résultats : journée ${n}/${total}`,
     noResults: 'Aucun résultat pour le moment.',
@@ -73,8 +80,8 @@ const PHRASES: Record<Locale, Phrases> = {
     standings: (state) => `Classement (${state})`,
     standingsFinal: 'classement final',
     standingsProgress: (played, total) => `${played}/${total} matchs joués`,
-    standingsRow: (rank, player, points, wins, losses, diff) =>
-      `${rank}. ${player} : ${points} pts (${wins}V ${losses}D, ${diff})`,
+    standingsRow: (rank, player, points, wins, losses, diff, draws) =>
+      `${rank}. ${player} : ${points} pts (${wins}V ${draws > 0 ? `${draws}N ` : ''}${losses}D, ${diff})`,
   },
   en: {
     toBeDetermined: 'to be determined',
@@ -91,6 +98,8 @@ const PHRASES: Record<Locale, Phrases> = {
     matchday: (n, total) => `Matchday ${n}/${total}`,
     rest: (player) => `Rest: ${player}`,
     wins: (player) => `${player} wins`,
+    drawn: 'draw',
+    beats: (winner, loser) => `${winner} beat ${loser}`,
     resultsRound: (round) => `Results: ${round}`,
     resultsMatchday: (n, total) => `Results: matchday ${n}/${total}`,
     noResults: 'No results yet.',
@@ -98,8 +107,8 @@ const PHRASES: Record<Locale, Phrases> = {
     standings: (state) => `Standings (${state})`,
     standingsFinal: 'final standings',
     standingsProgress: (played, total) => `${played}/${total} matches played`,
-    standingsRow: (rank, player, points, wins, losses, diff) =>
-      `${rank}. ${player}: ${points} pts (${wins}W ${losses}L, ${diff})`,
+    standingsRow: (rank, player, points, wins, losses, diff, draws) =>
+      `${rank}. ${player}: ${points} pts (${wins}W ${draws > 0 ? `${draws}D ` : ''}${losses}L, ${diff})`,
   },
   es: {
     toBeDetermined: 'por determinar',
@@ -116,6 +125,8 @@ const PHRASES: Record<Locale, Phrases> = {
     matchday: (n, total) => `Jornada ${n}/${total}`,
     rest: (player) => `Descansa: ${player}`,
     wins: (player) => `gana ${player}`,
+    drawn: 'empate',
+    beats: (winner, loser) => `${winner} vence a ${loser}`,
     resultsRound: (round) => `Resultados: ${round}`,
     resultsMatchday: (n, total) => `Resultados: jornada ${n}/${total}`,
     noResults: 'Sin resultados por ahora.',
@@ -123,8 +134,8 @@ const PHRASES: Record<Locale, Phrases> = {
     standings: (state) => `Clasificación (${state})`,
     standingsFinal: 'clasificación final',
     standingsProgress: (played, total) => `${played}/${total} partidos jugados`,
-    standingsRow: (rank, player, points, wins, losses, diff) =>
-      `${rank}. ${player}: ${points} pts (${wins}G ${losses}P, ${diff})`,
+    standingsRow: (rank, player, points, wins, losses, diff, draws) =>
+      `${rank}. ${player}: ${points} pts (${wins}G ${draws > 0 ? `${draws}E ` : ''}${losses}P, ${diff})`,
   },
 };
 
@@ -252,8 +263,14 @@ export function formatLeagueRound(
 // ---------------------------------------------------------------------------------------------
 
 function scoreLine(a: string, b: string, score: Score, p: Phrases): string {
+  if (score.a === score.b) return `${a} ${score.a}-${score.b} ${b} (${p.drawn})`;
   const aWins = score.a > score.b;
   return `${a} ${score.a}-${score.b} ${b} (${p.wins(aWins ? a : b)})`;
+}
+
+/** Élimination directe : on ne note pas de score, seulement qui a gagné. */
+function winnerLine(a: string, b: string, score: Score, p: Phrases): string {
+  return score.a > score.b ? p.beats(a, b) : p.beats(b, a);
 }
 
 /** Résultats saisis pour un tour d'élimination directe. Rien si aucun match n'est terminé. */
@@ -274,7 +291,7 @@ export function formatBracketResults(
   const done = matches.filter((m) => m.status === 'done' && m.score !== null);
   if (done.length === 0) lines.push(p.noResults);
   for (const m of done) {
-    lines.push(scoreLine(nameOf(names, m.a, p), nameOf(names, m.b, p), m.score as Score, p));
+    lines.push(winnerLine(nameOf(names, m.a, p), nameOf(names, m.b, p), m.score as Score, p));
   }
   if (round === bracket.rounds.length && bracket.champion !== null) {
     lines.push('', p.champion(nameOf(names, bracket.champion, p)));
@@ -322,7 +339,15 @@ export function formatStandings(
   for (const r of standings.rows) {
     const diff = r.scoreDiff > 0 ? `+${r.scoreDiff}` : `${r.scoreDiff}`;
     lines.push(
-      p.standingsRow(r.rank, nameOf(names, r.playerId, p), r.points, r.wins, r.losses, diff),
+      p.standingsRow(
+        r.rank,
+        nameOf(names, r.playerId, p),
+        r.points,
+        r.wins,
+        r.losses,
+        diff,
+        r.draws,
+      ),
     );
   }
   return lines.join('\n');

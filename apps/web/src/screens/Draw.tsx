@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { isBracketView } from '../api/types';
 import { ErrorNote } from '../components/ErrorNote';
 import { namesOf } from '../lib/chat';
@@ -15,6 +16,7 @@ export const bracketSize = (n: number): number => {
 export function Draw() {
   const { tournament, draw, isHolder, act } = useTournamentCtx();
   const { t, tn } = useI18n();
+  const navigate = useNavigate();
   const [legs, setLegs] = useState<1 | 2>(1);
   const present = tournament.registrations.filter(
     (r) => r.status === 'ACCEPTED' && r.presence === 'PRESENT',
@@ -25,33 +27,39 @@ export function Draw() {
     return (
       <div className="page" style={{ paddingTop: 12 }}>
         <h2 className="section-title">{t('draw.doneTitle')}</h2>
-        <p className="muted">{t('draw.verifiable')}</p>
-        <div className="panel">
+        <p className="muted">{t('draw.doneHint')}</p>
+        <Link className="key key-wide" to="../jeu">
+          {t('draw.seeMatches')}
+        </Link>
+        {draw && isBracketView(draw) && draw.bracket.byes > 0 && (
+          <p>
+            {t('draw.bracketLine', {
+              players: draw.initialPlayers.length,
+              size: draw.bracket.size,
+            })}
+            <b>{tn('draw.byes', draw.bracket.byes)}</b>
+            {t('draw.byesTail')}
+          </p>
+        )}
+        {/* La graine et l'ordre servent à vérifier le tirage : repliés, ils ne gênent pas. */}
+        <details className="panel fold">
+          <summary className="section-title">{t('draw.details')}</summary>
+          <p className="muted">{t('draw.verifiable')}</p>
           <div className="field">
             <span className="section-title" style={{ fontSize: 18 }}>
               {t('draw.seed')}
             </span>
             <code style={{ overflowWrap: 'anywhere' }}>{tournament.drawSeed}</code>
           </div>
-          {draw && isBracketView(draw) && draw.bracket.byes > 0 && (
-            <p>
-              {t('draw.bracketLine', {
-                players: draw.initialPlayers.length,
-                size: draw.bracket.size,
-              })}
-              <b>{tn('draw.byes', draw.bracket.byes)}</b>
-              {t('draw.byesTail')}
-            </p>
-          )}
-        </div>
-        <h3 className="section-title">{t('draw.order')}</h3>
-        <ol style={{ margin: 0, paddingInlineStart: 24 }}>
-          {(draw?.initialPlayers ?? []).map((id) => (
-            <li key={id} style={{ padding: '4px 0', fontSize: 17 }}>
-              {names[id] ?? id}
-            </li>
-          ))}
-        </ol>
+          <h3 className="section-title">{t('draw.order')}</h3>
+          <ol style={{ margin: 0, paddingInlineStart: 24 }}>
+            {(draw?.initialPlayers ?? []).map((id) => (
+              <li key={id} style={{ padding: '4px 0', fontSize: 17 }}>
+                {names[id] ?? id}
+              </li>
+            ))}
+          </ol>
+        </details>
       </div>
     );
   }
@@ -99,7 +107,11 @@ export function Draw() {
           type="button"
           disabled={!ready || act.isPending}
           onClick={() =>
-            act.mutate({ method: 'POST', path: '/draw', body: isLeague ? { legs } : {} })
+            act.mutate(
+              { method: 'POST', path: '/draw', body: isLeague ? { legs } : {} },
+              // Étape suivante sans clic : les matchs du premier tour.
+              { onSuccess: () => void navigate('../jeu') },
+            )
           }
         >
           {t('draw.do')}

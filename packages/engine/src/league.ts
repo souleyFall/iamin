@@ -117,6 +117,10 @@ export interface StandingsOptions {
   pointsForWin?: number;
   /** Points pour une défaite (0 par défaut). */
   pointsForLoss?: number;
+  /** Points de chacun pour un match nul (1 par défaut). */
+  pointsForDraw?: number;
+  /** Autorise les scores à égalité (le tournoi le décide à sa création) ; refusés par défaut. */
+  allowDraws?: boolean;
 }
 
 export interface StandingRow {
@@ -125,6 +129,8 @@ export interface StandingRow {
   rank: number;
   played: number;
   wins: number;
+  /** Matchs nuls (toujours 0 si le tournoi ne les autorise pas). */
+  draws: number;
   losses: number;
   /** Manches (ou points) marqués et encaissés, selon ce que l'admin saisit comme score. */
   scoreFor: number;
@@ -159,6 +165,8 @@ export function computeStandings(
 ): Standings {
   const win = options.pointsForWin ?? 3;
   const loss = options.pointsForLoss ?? 0;
+  const tie = options.pointsForDraw ?? 1;
+  const allowDraw = options.allowDraws === true;
 
   const matches = league.rounds.flat();
   const known = new Set(matches.map((m) => m.id));
@@ -173,6 +181,7 @@ export function computeStandings(
         playerId,
         played: 0,
         wins: 0,
+        draws: 0,
         losses: 0,
         scoreFor: 0,
         scoreAgainst: 0,
@@ -186,7 +195,7 @@ export function computeStandings(
   for (const m of matches) {
     const score = results[m.id];
     if (!score) continue;
-    assertScore(m.id, score);
+    assertScore(m.id, score, { allowDraw });
     done.push({ a: m.a, b: m.b, score });
     const aWins = score.a > score.b;
     const rowA = table.get(m.a);
@@ -198,7 +207,12 @@ export function computeStandings(
     rowA.scoreAgainst += score.b;
     rowB.scoreFor += score.b;
     rowB.scoreAgainst += score.a;
-    if (aWins) {
+    if (score.a === score.b) {
+      rowA.draws++;
+      rowB.draws++;
+      rowA.points += tie;
+      rowB.points += tie;
+    } else if (aWins) {
       rowA.wins++;
       rowB.losses++;
       rowA.points += win;
@@ -220,6 +234,11 @@ export function computeStandings(
     const pts = new Map<string, number>([...group].map((id) => [id, 0]));
     for (const g of done) {
       if (!group.has(g.a) || !group.has(g.b)) continue;
+      if (g.score.a === g.score.b) {
+        pts.set(g.a, (pts.get(g.a) ?? 0) + tie);
+        pts.set(g.b, (pts.get(g.b) ?? 0) + tie);
+        continue;
+      }
       const winner = g.score.a > g.score.b ? g.a : g.b;
       const loser = winner === g.a ? g.b : g.a;
       pts.set(winner, (pts.get(winner) ?? 0) + win);

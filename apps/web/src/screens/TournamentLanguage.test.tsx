@@ -118,6 +118,7 @@ const tournament = (over: Partial<Tournament> = {}): Tournament => ({
   status: 'REGISTRATION',
   publicSlug: 's'.repeat(22),
   forfeitScore: 1,
+  allowDraws: false,
   language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
   drawnAt: null,

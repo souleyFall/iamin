@@ -15,6 +15,14 @@ describe('validateScore', () => {
     expect(validateScore({ a: 3, b: 1 })).toEqual({ ok: true, winner: 'a' });
     expect(validateScore({ a: 0, b: 2 })).toEqual({ ok: true, winner: 'b' });
   });
+
+  it('accepte l’égalité seulement quand le tournoi autorise les nuls', () => {
+    expect(validateScore({ a: 1, b: 1 }).ok).toBe(false);
+    expect(validateScore({ a: 1, b: 1 }, undefined, false).ok).toBe(false);
+    expect(validateScore({ a: 1, b: 1 }, undefined, true)).toEqual({ ok: true, winner: 'draw' });
+    // Les autres règles restent : hors limites, toujours refusé.
+    expect(validateScore({ a: 100, b: 100 }, undefined, true).ok).toBe(false);
+  });
 });
 
 function setup(over: Partial<React.ComponentProps<typeof ScoreSheet>> = {}) {
@@ -43,6 +51,17 @@ describe('<ScoreSheet>', () => {
       screen.getByRole<HTMLButtonElement>('button', { name: 'Enregistrer le score' }).disabled,
     ).toBe(true);
     expect(screen.getByText('Un match ne peut pas finir à égalité.')).toBeTruthy();
+  });
+
+  it('enregistre un match nul quand la ligue l’autorise', async () => {
+    const { props, user } = setup({ allowDraw: true });
+    // 0-0 : valide, annoncé comme un nul.
+    expect(screen.getByText('Match nul : 1 point chacun.')).toBeTruthy();
+    expect(screen.queryByText('Un match ne peut pas finir à égalité.')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point à Karim_77' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter un point à Sana.fx' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le score' }));
+    expect(props.onSave).toHaveBeenCalledWith({ a: 1, b: 1 });
   });
 
   it('enregistre le score saisi avec les gros boutons', async () => {

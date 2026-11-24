@@ -1,4 +1,5 @@
 import { isBracketView, type DrawView, type Score } from '../api/types';
+import { Icon } from './Icon';
 import { useI18n, type I18n } from '../lib/i18n';
 import type { MessageKey } from '../lib/i18n/messages';
 import { roundName } from '../lib/labels';
@@ -8,6 +9,11 @@ export interface Line {
   a: string | null;
   b: string | null;
   score: Score | null;
+  /**
+   * `true` en ligue : on affiche le score. En élimination directe on désigne le vainqueur sans
+   * score : seul le gagnant est marqué.
+   */
+  scored: boolean;
   /** `waiting` : un joueur n'est pas encore connu ; `bye` : exempt. */
   state: 'waiting' | 'ready' | 'done' | 'bye';
   forfeit: boolean;
@@ -30,6 +36,7 @@ export function roundsOf(draw: DrawView, t: I18n['t']): Round[] {
         a: m.a,
         b: m.b,
         score: m.score,
+        scored: false,
         state: m.status,
         forfeit: draw.forfeits[m.id] != null,
       })),
@@ -45,6 +52,7 @@ export function roundsOf(draw: DrawView, t: I18n['t']): Round[] {
         a: m.a,
         b: m.b,
         score,
+        scored: true,
         state: score ? 'done' : 'ready',
         forfeit: draw.forfeits[m.id] != null,
       } satisfies Line;
@@ -121,9 +129,12 @@ export function MatchContent({
   const { t } = useI18n();
   const aWins = line.score !== null && line.score.a > line.score.b;
   const bWins = line.score !== null && line.score.b > line.score.a;
+  const drawn = line.scored && line.score !== null && line.score.a === line.score.b;
   const tag = line.forfeit
     ? { text: 'match.state.forfeit' as MessageKey, className: 'tag tag-bad' }
-    : STATE_TAG[line.state];
+    : drawn
+      ? { text: 'score.drawValid' as MessageKey, className: 'tag tag-ok' }
+      : STATE_TAG[line.state];
   return (
     <>
       <span className="row-head">
@@ -142,9 +153,19 @@ export function MatchContent({
           <span className={`match-name ${wins ? 'winner' : loses ? 'loser' : ''}`}>
             {nameOf(id)}
           </span>
-          <span className={`match-score tabular ${loses ? 'loser' : ''}`}>
-            {line.score ? line.score[side] : '–'}
-          </span>
+          {line.scored ? (
+            <span className={`match-score tabular ${loses ? 'loser' : ''}`}>
+              {line.score ? line.score[side] : '–'}
+            </span>
+          ) : (
+            // Élimination : pas de score, une coche pour le vainqueur.
+            <span
+              className="match-score match-win"
+              aria-label={wins ? t('match.winnerMark') : undefined}
+            >
+              {wins ? <Icon name="check" size={20} stroke={2.5} /> : null}
+            </span>
+          )}
         </span>
       ))}
     </>

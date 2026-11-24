@@ -41,6 +41,7 @@ interface View {
   seed: string;
   initialPlayers: string[];
   forfeitScore: number;
+  allowDraws: boolean;
   players: PlayerView[];
   forfeits: Record<string, string>;
   bracket?: { size: number; byes: number; rounds: BracketMatch[][] };
@@ -54,7 +55,14 @@ interface View {
     complete: boolean;
     played: number;
     total: number;
-    rows: { playerId: string; rank: number; points: number; wins: number }[];
+    rows: {
+      playerId: string;
+      rank: number;
+      points: number;
+      wins: number;
+      draws: number;
+      losses: number;
+    }[];
   };
 }
 
@@ -266,17 +274,17 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       let v = (await draw(alice, r.base)).body as View;
 
       // La finale n'a pas encore ses joueurs : score refusé.
-      expect((await score(alice, r.base, 'R2M1', { a: 2, b: 1 })).status).toBe(409);
+      expect((await score(alice, r.base, 'R2M1', { winner: 'a' })).status).toBe(409);
 
       const one = match(v, 'R1M1');
       const two = match(v, 'R1M2');
-      v = (await score(alice, r.base, 'R1M1', { a: 3, b: 1 })).body as View;
+      v = (await score(alice, r.base, 'R1M1', { winner: 'a' })).body as View;
       expect(match(v, 'R1M1')).toMatchObject({ winner: one.a, status: 'done' });
-      v = (await score(alice, r.base, 'R1M2', { a: 0, b: 2 })).body as View;
+      v = (await score(alice, r.base, 'R1M2', { winner: 'b' })).body as View;
       expect(match(v, 'R2M1')).toMatchObject({ a: one.a, b: two.b, status: 'ready' });
       expect(v.status).toBe('STARTED');
 
-      v = (await score(alice, r.base, 'R2M1', { a: 1, b: 2 })).body as View;
+      v = (await score(alice, r.base, 'R2M1', { winner: 'b' })).body as View;
       expect(v.champion).toBe(two.b);
       expect(v.status).toBe('FINISHED');
     });
@@ -302,10 +310,26 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       ]) {
         expect((await score(alice, r.base, real.id, body)).status, JSON.stringify(body)).toBe(400);
       }
-      expect((await score(alice, r.base, 'R9M9', { a: 2, b: 1 })).status).toBe(404);
-      expect((await score(alice, r.base, 'pas-un-code', { a: 2, b: 1 })).status).toBe(400);
-      expect((await score(alice, r.base, bye.id, { a: 2, b: 1 })).status).toBe(409);
+      expect((await score(alice, r.base, 'R9M9', { winner: 'a' })).status).toBe(404);
+      expect((await score(alice, r.base, 'pas-un-code', { winner: 'a' })).status).toBe(400);
+      expect((await score(alice, r.base, bye.id, { winner: 'a' })).status).toBe(409);
       expect(await t.prisma.matchResult.count()).toBe(0);
+    });
+
+    it('désigne le vainqueur sans score : un score est refusé en élimination directe', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const r = await ready(alice, a.id, { names: ['P1', 'P2', 'P3', 'P4'] });
+      await draw(alice, r.base);
+
+      const refused = await score(alice, r.base, 'R1M1', { a: 2, b: 1 });
+      expect(refused.status).toBe(400);
+      expect((refused.body as { message: string }).message).toMatch(/désignez le vainqueur/);
+      expect(await t.prisma.matchResult.count()).toBe(0);
+
+      const ok = (await score(alice, r.base, 'R1M1', { winner: 'b' })).body as View;
+      expect(match(ok, 'R1M1').winner).toBe(match(ok, 'R1M1').b);
+      expect(ok.allowDraws).toBe(false);
     });
 
     it('corrige un score, mais pas un vainqueur dont le match suivant est joué', async () => {
@@ -313,21 +337,21 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       const alice = await loggedIn('alice');
       const r = await ready(alice, a.id, { names: ['P1', 'P2', 'P3', 'P4'] });
       await draw(alice, r.base);
-      await score(alice, r.base, 'R1M1', { a: 3, b: 1 });
-      await score(alice, r.base, 'R1M2', { a: 2, b: 0 });
-      await score(alice, r.base, 'R2M1', { a: 2, b: 1 });
+      await score(alice, r.base, 'R1M1', { winner: 'a' });
+      await score(alice, r.base, 'R1M2', { winner: 'a' });
+      await score(alice, r.base, 'R2M1', { winner: 'a' });
 
       // Même vainqueur : correction libre.
-      expect((await score(alice, r.base, 'R1M1', { a: 2, b: 0 })).status).toBe(200);
+      expect((await score(alice, r.base, 'R1M1', { winner: 'a' })).status).toBe(200);
       // Autre vainqueur alors que la finale est jouée : refusé.
-      expect((await score(alice, r.base, 'R1M1', { a: 0, b: 2 })).status).toBe(409);
+      expect((await score(alice, r.base, 'R1M1', { winner: 'b' })).status).toBe(409);
       expect((await alice.request('DELETE', `${r.base}/matches/R1M1/result`)).status).toBe(409);
 
       // On annule d'abord la finale : le tournoi n'est plus terminé, puis on peut corriger.
       const reopened = (await alice.request('DELETE', `${r.base}/matches/R2M1/result`))
         .body as View;
       expect(reopened.status).toBe('STARTED');
-      expect((await score(alice, r.base, 'R1M1', { a: 0, b: 2 })).status).toBe(200);
+      expect((await score(alice, r.base, 'R1M1', { winner: 'b' })).status).toBe(200);
       expect((await alice.request('DELETE', `${r.base}/matches/R2M1/result`)).status).toBe(404);
     });
 
@@ -346,7 +370,7 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       v = (await score(alice, r.base, 'R1M2', { forfeit: 'b' })).body as View;
       expect(match(v, 'R1M2').score).toEqual({ a: 3, b: 0 });
       // Un vrai score efface la marque de forfait.
-      v = (await score(alice, r.base, 'R1M2', { a: 2, b: 1 })).body as View;
+      v = (await score(alice, r.base, 'R1M2', { winner: 'a' })).body as View;
       expect(v.forfeits).toEqual({ R1M1: 'A' });
     });
 
@@ -357,11 +381,99 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       const r = await ready(alice, a.id, { names: ['P1', 'P2', 'P3', 'P4'] });
       await draw(alice, r.base);
       const replies = await Promise.all([
-        score(alice, r.base, 'R1M1', { a: 2, b: 0 }),
-        score(second, r.base, 'R1M2', { a: 0, b: 2 }),
+        score(alice, r.base, 'R1M1', { winner: 'a' }),
+        score(second, r.base, 'R1M2', { winner: 'b' }),
       ]);
       expect(replies.map((x) => x.status)).toEqual([200, 200]);
       expect(await t.prisma.matchResult.count()).toBe(2);
+    });
+  });
+
+  // -----------------------------------------------------------------------------------------
+  describe('ligue : matchs nuls', () => {
+    async function league(allowDraws: boolean | undefined) {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const created = await alice.request('POST', `/groups/${a.id}/tournaments`, {
+        name: 'Ligue nuls',
+        format: 'LEAGUE',
+        capacity: 3,
+        ...(allowDraws === undefined ? {} : { allowDraws }),
+      });
+      expect(created.status).toBe(201);
+      const base = `/groups/${a.id}/tournaments/${(created.body as { id: string }).id}`;
+      for (const name of ['P1', 'P2', 'P3']) {
+        await alice.request('POST', `${base}/registrations`, { name });
+      }
+      await alice.request('PATCH', base, { status: 'CHECK_IN' });
+      const roster = (await alice.request('GET', base)).body as {
+        allowDraws: boolean;
+        registrations: { id: string }[];
+      };
+      for (const p of roster.registrations) {
+        await alice.request('PATCH', `${base}/registrations/${p.id}`, { presence: 'PRESENT' });
+      }
+      const v = (await draw(alice, base)).body as View;
+      return { alice, base, v, allowDraws: roster.allowDraws };
+    }
+
+    it('refuse un score à égalité par défaut', async () => {
+      const { alice, base, v, allowDraws } = await league(undefined);
+      expect(allowDraws).toBe(false);
+      const code = v.schedule!.rounds.flat()[0]!.id;
+      const tie = await score(alice, base, code, { a: 1, b: 1 });
+      expect(tie.status).toBe(400);
+      expect(await t.prisma.matchResult.count()).toBe(0);
+    });
+
+    it('accepte le nul quand le tournoi l’autorise : 1 point chacun, bilan V-N-D', async () => {
+      const { alice, base, v, allowDraws } = await league(true);
+      expect(allowDraws).toBe(true);
+      expect(v.allowDraws).toBe(true);
+      const [first, second, third] = v.schedule!.rounds.flat();
+      let view = (await score(alice, base, first!.id, { a: 1, b: 1 })).body as View;
+      const rows = (id: string) => view.standings!.rows.find((r) => r.playerId === id)!;
+      expect(rows(first!.a)).toMatchObject({ draws: 1, wins: 0, losses: 0, points: 1 });
+      expect(rows(first!.b)).toMatchObject({ draws: 1, points: 1 });
+      view = (await score(alice, base, second!.id, { a: 2, b: 0 })).body as View;
+      view = (await score(alice, base, third!.id, { a: 0, b: 0 })).body as View;
+      expect(view.standings!.complete).toBe(true);
+      expect(view.status).toBe('FINISHED');
+    });
+
+    it('refuse le vainqueur seul en ligue : il faut le score', async () => {
+      const { alice, base, v } = await league(true);
+      const code = v.schedule!.rounds.flat()[0]!.id;
+      const reply = await score(alice, base, code, { winner: 'a' });
+      expect(reply.status).toBe(400);
+      expect((reply.body as { message: string }).message).toMatch(/score/);
+    });
+
+    it('le choix se modifie avant le tirage seulement, et jamais en élimination', async () => {
+      const { a } = await world();
+      const alice = await loggedIn('alice');
+      const mk = async (format: string) => {
+        const c = await alice.request('POST', `/groups/${a.id}/tournaments`, {
+          name: format,
+          format,
+          capacity: 4,
+          allowDraws: true,
+        });
+        return `/groups/${a.id}/tournaments/${(c.body as { id: string }).id}`;
+      };
+      // En élimination, la demande est ignorée à la création, et refusée ensuite.
+      const knockout = await mk('ELIMINATION');
+      expect(
+        ((await alice.request('GET', knockout)).body as { allowDraws: boolean }).allowDraws,
+      ).toBe(false);
+      expect((await alice.request('PATCH', knockout, { allowDraws: true })).status).toBe(400);
+
+      // En ligue : modifiable tant que le tirage n'est pas fait.
+      const league = await mk('LEAGUE');
+      expect((await alice.request('PATCH', league, { allowDraws: false })).status).toBe(200);
+      expect(
+        ((await alice.request('GET', league)).body as { allowDraws: boolean }).allowDraws,
+      ).toBe(false);
     });
   });
 
@@ -426,7 +538,7 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
     it('refuse de remplacer un joueur qui a déjà joué, ou par un joueur invalide', async () => {
       const { alice, r, v, waiting } = await started();
       const played = match(v, 'R1M1');
-      await score(alice, r.base, 'R1M1', { a: 2, b: 1 });
+      await score(alice, r.base, 'R1M1', { winner: 'a' });
       const replace = (outId: string, inId: string) =>
         alice.request('POST', `${r.base}/replacements`, { outId, inId });
 
@@ -470,15 +582,15 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       await draw(alice, own.base);
       const rb = await ready(bob, b.id, { names: ['B1', 'B2', 'B3', 'B4', 'B5'], capacity: 4 });
       const vb = (await draw(bob, rb.base)).body as View;
-      await score(bob, rb.base, 'R1M1', { a: 2, b: 0 });
+      await score(bob, rb.base, 'R1M1', { winner: 'a' });
       const before = await t.prisma.matchResult.findMany({ orderBy: { code: 'asc' } });
 
       const players = vb.initialPlayers;
       const routes = (base: string): [string, string, unknown][] => [
         ['GET', `${base}/draw`, undefined],
         ['POST', `${base}/draw`, {}],
-        ['PUT', `${base}/matches/R1M1/result`, { a: 0, b: 2 }],
-        ['PUT', `${base}/matches/R1M2/result`, { a: 2, b: 0 }],
+        ['PUT', `${base}/matches/R1M1/result`, { winner: 'b' }],
+        ['PUT', `${base}/matches/R1M2/result`, { winner: 'a' }],
         ['DELETE', `${base}/matches/R1M1/result`, undefined],
         ['POST', `${base}/replacements`, { outId: players[0], inId: rb.players[4]!.id }],
       ];
@@ -514,7 +626,7 @@ describe.skipIf(!testDatabaseUrl)('tirage, scores et remplacements (base réelle
       for (const [method, path, body] of [
         ['GET', `${r.base}/draw`, undefined],
         ['POST', `${r.base}/draw`, {}],
-        ['PUT', `${r.base}/matches/R1M1/result`, { a: 2, b: 0 }],
+        ['PUT', `${r.base}/matches/R1M1/result`, { winner: 'a' }],
         ['DELETE', `${r.base}/matches/R1M1/result`, undefined],
         ['POST', `${r.base}/replacements`, {}],
       ] as const) {

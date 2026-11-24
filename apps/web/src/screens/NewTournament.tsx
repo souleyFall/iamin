@@ -17,6 +17,8 @@ export function NewTournament() {
   const [name, setName] = useState('');
   const [format, setFormat] = useState<TournamentFormat>('ELIMINATION');
   const [capacity, setCapacity] = useState(16);
+  // Matchs nuls (ligue seulement) : selon le jeu, une égalité est possible ou non. Non par défaut.
+  const [allowDraws, setAllowDraws] = useState(false);
   // Par défaut : la langue de l'écran de l'admin, le plus souvent celle de son groupe.
   const [language, setLanguage] = useState<TournamentLanguage>(locale);
   const groupId = current?.id;
@@ -28,6 +30,7 @@ export function NewTournament() {
         format,
         capacity,
         language,
+        allowDraws: format === 'LEAGUE' && allowDraws,
       }),
     onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: keys.scope(groupId ?? '') });
@@ -96,6 +99,23 @@ export function NewTournament() {
             {format === 'LEAGUE' ? t('new.leagueHint') : t('new.eliminationHint')}
           </p>
         </fieldset>
+
+        {format === 'LEAGUE' ? (
+          <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend>{t('new.draws.label')}</legend>
+            <div className="segmented">
+              <button type="button" aria-pressed={!allowDraws} onClick={() => setAllowDraws(false)}>
+                {t('new.draws.no')}
+              </button>
+              <button type="button" aria-pressed={allowDraws} onClick={() => setAllowDraws(true)}>
+                {t('new.draws.yes')}
+              </button>
+            </div>
+            <p className="hint">{allowDraws ? t('new.draws.hintYes') : t('new.draws.hintNo')}</p>
+          </fieldset>
+        ) : (
+          <p className="hint">{t('new.draws.knockout')}</p>
+        )}
 
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
           <legend>{t('lang.label')}</legend>

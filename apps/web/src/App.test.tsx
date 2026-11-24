@@ -25,6 +25,7 @@ const summary = (over: Partial<TournamentSummary> = {}): TournamentSummary => ({
   status: 'REGISTRATION',
   publicSlug: 'x'.repeat(22),
   forfeitScore: 1,
+  allowDraws: false,
   language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
   drawnAt: null,

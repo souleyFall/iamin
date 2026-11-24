@@ -13,11 +13,14 @@ function ShareLink({
   language,
   canChange,
   onLanguage,
+  draws,
 }: {
   slug: string;
   language: TournamentLanguage;
   canChange: boolean;
   onLanguage: (language: TournamentLanguage) => void;
+  /** Ligue seulement : les matchs nuls, modifiables tant que le tirage n'est pas fait. */
+  draws: { value: boolean; canChange: boolean; onChange: (value: boolean) => void } | null;
 }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState<boolean | null>(null);
@@ -63,6 +66,32 @@ function ShareLink({
         </div>
         <p className="hint">{t('lang.hint')}</p>
       </div>
+      {draws && (
+        <div className="field">
+          <span className="section-title" style={{ fontSize: 18 }}>
+            {t('new.draws.label')}
+          </span>
+          <div className="segmented" role="group" aria-label={t('new.draws.label')}>
+            <button
+              type="button"
+              aria-pressed={!draws.value}
+              disabled={!draws.canChange}
+              onClick={() => draws.onChange(false)}
+            >
+              {t('new.draws.no')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={draws.value}
+              disabled={!draws.canChange}
+              onClick={() => draws.onChange(true)}
+            >
+              {t('new.draws.yes')}
+            </button>
+          </div>
+          <p className="hint">{draws.value ? t('new.draws.hintYes') : t('new.draws.hintNo')}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -94,6 +123,16 @@ export function Registrations() {
         language={tournament.language}
         canChange={isHolder}
         onLanguage={(language) => act.mutate({ method: 'PATCH', path: '', body: { language } })}
+        draws={
+          tournament.format === 'LEAGUE'
+            ? {
+                value: tournament.allowDraws,
+                canChange: canWrite,
+                onChange: (allowDraws) =>
+                  act.mutate({ method: 'PATCH', path: '', body: { allowDraws } }),
+              }
+            : null
+        }
       />
 
       <div className="desk-main">

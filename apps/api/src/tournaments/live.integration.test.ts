@@ -191,7 +191,7 @@ describe.skipIf(!testDatabaseUrl)('page publique et direct (base réelle)', () =
     await drawn(admin, base);
     const before = (await view(slug)).body as PublicView;
     const first = before.bracket?.rounds[0]?.[0]?.id ?? '';
-    const put = await admin.request('PUT', `${base}/matches/${first}/result`, { a: 3, b: 1 });
+    const put = await admin.request('PUT', `${base}/matches/${first}/result`, { winner: 'a' });
     expect(put.status).toBe(200);
     const after = (await view(slug)).body as PublicView;
     expect(after.revision).toBeGreaterThan(before.revision);

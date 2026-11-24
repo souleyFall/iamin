@@ -35,6 +35,8 @@ interface JournalEvent {
 interface Journal {
   events: JournalEvent[];
   nextBefore: string | null;
+  /** Noms retrouvés à la lecture : la charge des événements, elle, ne garde que des identifiants. */
+  refs: { players: Record<string, string>; users: Record<string, string> };
 }
 
 describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
@@ -134,7 +136,7 @@ describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
         ['PATCH', `${tour.base}/registrations/${player}`, { presence: 'ABSENT' }],
         ['DELETE', `${tour.base}/registrations/${player}`, undefined],
         ['POST', `${tour.base}/draw`, {}],
-        ['PUT', `${tour.base}/matches/R1M1/result`, { a: 2, b: 0 }],
+        ['PUT', `${tour.base}/matches/R1M1/result`, { winner: 'a' }],
         ['DELETE', `${tour.base}/matches/R1M1/result`, undefined],
         ['POST', `${tour.base}/replacements`, { outId: player, inId: tour.players[1] }],
       ];
@@ -147,7 +149,7 @@ describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
 
       // Le détenteur, lui, écrit.
       expect(
-        (await adam.request('PUT', `${tour.base}/matches/R1M1/result`, { a: 2, b: 0 })).status,
+        (await adam.request('PUT', `${tour.base}/matches/R1M1/result`, { winner: 'a' })).status,
       ).toBe(200);
     });
 
@@ -312,7 +314,7 @@ describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
       const adam = await loggedIn('adam');
       const adaClient = await loggedIn('ada');
       const tour = await tournament(adam, a.id, true);
-      await adam.request('PUT', `${tour.base}/matches/R1M1/result`, { a: 2, b: 1 });
+      await adam.request('PUT', `${tour.base}/matches/R1M1/result`, { winner: 'a' });
       await adam.request('POST', `${tour.base}/relay/offer`, { toUserId: ada.id });
       await adaClient.request('POST', `${tour.base}/relay/accept`);
       await adaClient.request('DELETE', `${tour.base}/matches/R1M1/result`);
@@ -343,13 +345,34 @@ describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
       const set = events.find((e) => e.type === 'RESULT_SET')!;
       expect(set).toMatchObject({
         actor: { username: 'adam' },
-        payload: { code: 'R1M1', a: 2, b: 1, version: 1 },
+        payload: { code: 'R1M1', winner: 'a', version: 1 },
       });
+      // Élimination : le vainqueur, jamais un faux score.
+      expect(set.payload).not.toHaveProperty('a');
       const draw = events.find((e) => e.type === 'DRAW_DONE')!;
       expect(draw.payload).toMatchObject({ players: 4 });
       expect(draw.payload.seed).toMatch(/^[0-9a-f]{32}$/);
       // Minimisation : aucun pseudo de joueur dans le journal.
       expect(JSON.stringify(events)).not.toMatch(/P1|P2|P3|P4/);
+    });
+
+    it('retrouve à la lecture les noms des joueurs et des admins cités, sans les écrire dans le journal', async () => {
+      const { a, ada } = await world();
+      const adam = await loggedIn('adam');
+      const adaClient = await loggedIn('ada');
+      const tour = await tournament(adam, a.id, true);
+      await adam.request('POST', `${tour.base}/relay/offer`, { toUserId: ada.id });
+      await adaClient.request('POST', `${tour.base}/relay/accept`);
+
+      const page = await journal(adaClient, tour.base);
+      // Les joueurs inscrits (présence, ajout…) et les admins du relais sont nommés.
+      expect(Object.values(page.refs.players).sort()).toEqual(['P1', 'P2', 'P3', 'P4']);
+      expect(Object.values(page.refs.users)).toEqual(expect.arrayContaining(['adam']));
+      // Un joueur supprimé n'a plus de nom : le journal ne le garde pas.
+      const someone = Object.keys(page.refs.players)[0]!;
+      await t.prisma.registration.delete({ where: { id: someone } });
+      const after = await journal(adaClient, tour.base);
+      expect(Object.keys(after.refs.players)).not.toContain(someone);
     });
 
     it('ne garde aucune trace d’une action refusée, et note les actions des joueurs sans compte', async () => {
@@ -433,18 +456,18 @@ describe.skipIf(!testDatabaseUrl)('relais et journal (base réelle)', () => {
       const tour = await tournament(adam, a.id, true);
       const put = (body: unknown) => adam.request('PUT', `${tour.base}/matches/R1M1/result`, body);
 
-      expect((await put({ a: 2, b: 0, version: 1 })).status).toBe(409); // il n'y a pas encore de score
-      const first = await put({ a: 2, b: 0, version: 0 });
+      expect((await put({ winner: 'a', version: 1 })).status).toBe(409); // il n'y a pas encore de résultat
+      const first = await put({ winner: 'a', version: 0 });
       expect((first.body as { versions: Record<string, number> }).versions).toEqual({ R1M1: 1 });
-      const second = await put({ a: 2, b: 1, version: 1 });
+      const second = await put({ winner: 'a', version: 1 });
       expect(second.status).toBe(200);
       expect((second.body as { versions: Record<string, number> }).versions).toEqual({ R1M1: 2 });
       // Un écran resté sur la version 1 ne peut plus écraser.
-      expect((await put({ a: 0, b: 2, version: 1 })).status).toBe(409);
+      expect((await put({ winner: 'b', version: 1 })).status).toBe(409);
       expect((await put({ forfeit: 'a', version: 1 })).status).toBe(409);
       // Sans version, la saisie reste permise (le détenteur est seul à écrire).
-      expect((await put({ a: 2, b: 0 })).status).toBe(200);
-      expect((await put({ a: 2, b: 0, version: -1 })).status).toBe(400);
+      expect((await put({ winner: 'a' })).status).toBe(200);
+      expect((await put({ winner: 'a', version: -1 })).status).toBe(400);
     });
   });
 

@@ -10,6 +10,8 @@ export function StandingsTable({
   nameOf: (id: string | null) => string;
 }) {
   const { t } = useI18n();
+  // La colonne des nuls n'apparaît que s'il y en a : une ligue sans nul garde V-D.
+  const withDraws = standings.rows.some((r) => r.draws > 0);
   return (
     <section aria-labelledby="standings">
       <h2 id="standings" className="section-title">
@@ -21,7 +23,7 @@ export function StandingsTable({
             <th scope="col">#</th>
             <th scope="col">{t('standings.player')}</th>
             <th scope="col">{t('standings.points')}</th>
-            <th scope="col">{t('standings.record')}</th>
+            <th scope="col">{t(withDraws ? 'standings.recordDraws' : 'standings.record')}</th>
             <th scope="col">{t('standings.diff')}</th>
           </tr>
         </thead>
@@ -37,9 +39,7 @@ export function StandingsTable({
                 {nameOf(r.playerId)}
               </th>
               <td>{r.points}</td>
-              <td>
-                {r.wins}-{r.losses}
-              </td>
+              <td>{withDraws ? `${r.wins}-${r.draws}-${r.losses}` : `${r.wins}-${r.losses}`}</td>
               <td>{r.scoreDiff > 0 ? `+${r.scoreDiff}` : r.scoreDiff}</td>
             </tr>
           ))}

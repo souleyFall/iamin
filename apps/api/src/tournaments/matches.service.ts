@@ -34,8 +34,14 @@ type Tx = Prisma.TransactionClient;
 const NOT_DRAWN = 'Le tirage n’est pas fait';
 const MATCH_NOT_FOUND = 'Match introuvable';
 
-/** version : celle du score que l'écran affichait (0 s'il n'y en avait pas) ; voir setResult. */
-export type ResultInput = ({ a: number; b: number } | { forfeit: 'a' | 'b' }) & {
+/**
+ * Ligue : un score `{ a, b }`. Élimination directe : le vainqueur `{ winner }`, sans score (on ne
+ * garde en interne que 1-0 ou 0-1 pour faire avancer le tableau). Dans les deux : un forfait.
+ * version : celle du résultat que l'écran affichait (0 s'il n'y en avait pas) ; voir setResult.
+ */
+export type ResultInput = (
+  { a: number; b: number } | { winner: 'a' | 'b' } | { forfeit: 'a' | 'b' }
+) & {
   version?: number;
 };
 
@@ -44,6 +50,7 @@ interface Drawn {
   format: TournamentFormat;
   status: TournamentStatus;
   forfeitScore: number;
+  allowDraws: boolean;
   drawSeed: string | null;
   drawPlayers: string[];
   drawLegs: number | null;
@@ -56,6 +63,7 @@ const drawnSelect = {
   format: true,
   status: true,
   forfeitScore: true,
+  allowDraws: true,
   drawSeed: true,
   drawPlayers: true,
   drawLegs: true,
@@ -178,14 +186,27 @@ export class MatchesService {
       const matchIds = this.matchCodes(t);
       if (!matchIds.has(code)) throw new NotFoundException(MATCH_NOT_FOUND);
 
+      const isBracket = t.format === TournamentFormat.ELIMINATION;
+      if ('winner' in input && !isBracket) {
+        throw new BadRequestException('Une ligue demande le score du match');
+      }
+      if ('a' in input && isBracket) {
+        throw new BadRequestException(
+          'En élimination directe, désignez le vainqueur : pas de score',
+        );
+      }
       const score: Score =
         'forfeit' in input
           ? input.forfeit === 'a'
             ? { a: 0, b: t.forfeitScore }
             : { a: t.forfeitScore, b: 0 }
-          : { a: input.a, b: input.b };
+          : 'winner' in input
+            ? input.winner === 'a'
+              ? { a: 1, b: 0 }
+              : { a: 0, b: 1 }
+            : { a: input.a, b: input.b };
       try {
-        assertScore(code, score);
+        assertScore(code, score, { allowDraw: !isBracket && t.allowDraws });
       } catch (error) {
         if (error instanceof EngineError) throw new BadRequestException(error.message);
         throw error;
@@ -217,13 +238,16 @@ export class MatchesService {
         create: { tournamentId, code, scoreA: score.a, scoreB: score.b, forfeitBy, version },
         update: { scoreA: score.a, scoreB: score.b, forfeitBy, version },
       });
-      await this.events.record(tx, tournamentId, actorId, 'RESULT_SET', {
-        code,
-        a: score.a,
-        b: score.b,
-        forfeitBy,
-        version,
-      });
+      // Élimination : on note le vainqueur, pas le 1-0 interne. Ligue : le score réel.
+      await this.events.record(
+        tx,
+        tournamentId,
+        actorId,
+        'RESULT_SET',
+        isBracket
+          ? { code, winner: score.a > score.b ? 'a' : 'b', forfeitBy, version }
+          : { code, a: score.a, b: score.b, forfeitBy, version },
+      );
       await this.syncStatus(tx, t, next);
     });
     return this.get(groupId, tournamentId);
@@ -392,7 +416,7 @@ export class MatchesService {
     const finished =
       t.format === TournamentFormat.ELIMINATION
         ? resolveBracket(t.structure as Bracket, results).champion !== null
-        : computeStandings(t.structure as League, results).complete;
+        : computeStandings(t.structure as League, results, { allowDraws: t.allowDraws }).complete;
     await tx.tournament.update({
       where: { id: t.id },
       data: { status: finished ? TournamentStatus.FINISHED : TournamentStatus.STARTED },
@@ -400,7 +424,9 @@ export class MatchesService {
   }
 
   private leagueView(t: Drawn, results: Record<string, Score>) {
-    return engineConflict(() => computeStandings(t.structure as League, results));
+    return engineConflict(() =>
+      computeStandings(t.structure as League, results, { allowDraws: t.allowDraws }),
+    );
   }
 
   /**
@@ -471,6 +497,8 @@ export class MatchesService {
       /** Liste triée utilisée pour le tirage : avec la graine, elle permet de le refaire. */
       initialPlayers: t.drawPlayers,
       forfeitScore: t.forfeitScore,
+      /** Ligue : les scores à égalité sont acceptés (choisi à la création du tournoi). */
+      allowDraws: t.allowDraws,
       players,
       /** Version de chaque score : à renvoyer en le corrigeant (voir setResult). */
       versions: Object.fromEntries(rows.map((r) => [r.code, r.version])),
@@ -485,7 +513,7 @@ export class MatchesService {
         ...common,
         schedule: { legs: league.legs, rounds: league.rounds, rests: league.rests },
         scores,
-        standings: computeStandings(league, scores),
+        standings: computeStandings(league, scores, { allowDraws: t.allowDraws }),
       };
     }
     const bracket = t.structure as unknown as Bracket;

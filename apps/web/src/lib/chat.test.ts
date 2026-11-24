@@ -28,6 +28,7 @@ const tournament = (format: Tournament['format'], registrations: Registration[])
   status: 'STARTED',
   publicSlug: 's'.repeat(22),
   forfeitScore: 1,
+  allowDraws: false,
   language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
   drawnAt: '2026-11-22T11:00:00Z',
@@ -47,7 +48,7 @@ const view = (
   t: Tournament,
 ): Pick<
   BracketView,
-  'format' | 'status' | 'seed' | 'drawnAt' | 'forfeitScore' | 'versions' | 'forfeits'
+  'format' | 'status' | 'seed' | 'drawnAt' | 'forfeitScore' | 'allowDraws' | 'versions' | 'forfeits'
 > & {
   players: BracketView['players'];
   initialPlayers: string[];
@@ -57,6 +58,7 @@ const view = (
   seed: 'seed',
   drawnAt: t.drawnAt,
   forfeitScore: 1,
+  allowDraws: false,
   versions: {},
   forfeits: {},
   initialPlayers: players.map((p) => p.id),

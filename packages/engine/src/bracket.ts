@@ -152,12 +152,17 @@ export interface ResolvedBracket {
   champion: string | null;
 }
 
-export function assertScore(matchId: string, score: Score): void {
+export function assertScore(
+  matchId: string,
+  score: Score,
+  options: { allowDraw?: boolean } = {},
+): void {
   const valid = (n: number) => Number.isInteger(n) && n >= 0;
   if (!valid(score.a) || !valid(score.b)) {
     throw new EngineError(`Score invalide pour ${matchId} : des entiers positifs sont attendus.`);
   }
-  if (score.a === score.b) {
+  // Une élimination ne tolère jamais l'égalité ; une ligue seulement si le tournoi l'autorise.
+  if (score.a === score.b && options.allowDraw !== true) {
     throw new EngineError(`Score invalide pour ${matchId} : un match ne peut pas finir à égalité.`);
   }
 }
