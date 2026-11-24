@@ -130,6 +130,18 @@ describe.skipIf(!testDatabaseUrl)('page publique et direct (base réelle)', () =
     return r;
   };
 
+  it('impose au navigateur un délai de reconnexion de 15 s (champ SSE retry)', async () => {
+    const { group, admin } = await setup();
+    const { slug } = await create(admin, group.id, 'Coupe lente');
+    const controller = new AbortController();
+    const res = await fetch(`${t.url}/public/tournaments/${slug}/live`, {
+      signal: controller.signal,
+    });
+    const first = await timeout((res.body as ReadableStream<Uint8Array>).getReader().read());
+    controller.abort();
+    expect(new TextDecoder().decode(first.value)).toContain('retry: 15000');
+  });
+
   it('montre les inscrits validés mais jamais les inscriptions en attente', async () => {
     const { group, admin } = await setup();
     const { slug, base } = await create(admin, group.id, 'Coupe publique');
