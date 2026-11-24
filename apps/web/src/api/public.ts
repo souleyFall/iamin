@@ -14,21 +14,54 @@ const viewKey = (slug: string) => ['public', slug, 'view'] as const;
 const mineKey = (slug: string) => ['public', slug, 'mine'] as const;
 const playerHeader = (token: string) => ({ 'x-player-token': token });
 
+/** Reconnexion du direct : attente doublée à chaque échec (2 s, 4 s… 60 s au plus). */
+export const RECONNECT_BASE_MS = 2_000;
+export const RECONNECT_MAX_MS = 60_000;
+/** Une connexion tenue plus longtemps que cela était saine : le compte d'échecs repart de zéro. */
+export const STABLE_MS = 10_000;
+/** Après autant de connexions coupées aussitôt, on renonce au direct : le rafraîchissement régulier suffit. */
+export const MAX_QUICK_FAILURES = 5;
+
 /**
  * Suit le direct : à chaque message `changed` du serveur on relit la vue. Le message ne porte que
- * le numéro de révision, jamais de donnée (D18). `EventSource` se reconnecte seul après une coupure.
- * Renvoie `true` tant que le flux est ouvert.
+ * le numéro de révision, jamais de donnée (D18). Renvoie `true` tant que le flux est ouvert.
+ *
+ * La reconnexion est menée ici et non par `EventSource` : chaque navigateur rouvrait sa connexion à
+ * son rythme (toutes les 5 s pour Firefox), jusqu'à épuiser la limite de débit du serveur. Ici le
+ * délai double à chaque échec, et après 5 coupures immédiates d'affilée on s'en tient au
+ * rafraîchissement toutes les 20 s (FALLBACK_REFRESH_MS), qui marche sans flux.
  */
 export function useLive(slug: string, onChange: () => void): boolean {
   const [connected, setConnected] = useState(false);
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
-    const source = new EventSource(`${API_URL}/public/tournaments/${slug}/live`);
-    source.onopen = () => setConnected(true);
-    source.onerror = () => setConnected(false);
-    source.addEventListener('changed', onChange);
+    let source: EventSource | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    let failures = 0;
+
+    const open = () => {
+      const openedAt = Date.now();
+      const current = new EventSource(`${API_URL}/public/tournaments/${slug}/live`);
+      source = current;
+      current.onopen = () => setConnected(true);
+      current.addEventListener('changed', onChange);
+      current.onerror = () => {
+        setConnected(false);
+        current.close();
+        if (stopped) return;
+        failures = Date.now() - openedAt >= STABLE_MS ? 1 : failures + 1;
+        if (failures > MAX_QUICK_FAILURES) return;
+        const wait = Math.min(RECONNECT_BASE_MS * 2 ** (failures - 1), RECONNECT_MAX_MS);
+        timer = setTimeout(open, wait);
+      };
+    };
+    open();
+
     return () => {
-      source.close();
+      stopped = true;
+      clearTimeout(timer);
+      source?.close();
       setConnected(false);
     };
   }, [slug, onChange]);

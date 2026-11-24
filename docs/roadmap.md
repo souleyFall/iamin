@@ -31,6 +31,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 23  | `feat(i18n)` : langue du tournoi, page des joueurs et texte du chat                | fusionnée |
 | 24  | `feat(i18n)` : messages d'erreur de l'API en trois langues                         | fusionnée |
 | 25  | `feat(logs)` : journal structuré, identifiant de requête, erreurs du navigateur    | fusionnée |
+| 26  | `fix(live)` : reconnexion du direct espacée, délai imposé par le serveur           | fusionnée |
 
 ## Après
 

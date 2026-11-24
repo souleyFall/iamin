@@ -26,9 +26,17 @@ interface Watch {
   timer: NodeJS.Timeout;
 }
 
+/**
+ * Délai de reconnexion imposé au navigateur (champ SSE `retry`). Sans lui chaque navigateur choisit le
+ * sien (5 s pour Firefox) : une connexion qui se ferme aussitôt la rouvrait douze fois par minute et
+ * épuisait la limite de débit (20 par minute et par adresse), journal à l'appui.
+ */
+export const RETRY_MS = 15_000;
+
 export interface LiveMessage {
   type: 'changed' | 'ping';
   data: { revision?: number };
+  retry: number;
 }
 
 /**
@@ -84,13 +92,17 @@ export class LiveService implements OnModuleDestroy {
     const initial = existing?.revision ?? (await this.count(tournamentId));
 
     return new Observable<LiveMessage>((subscriber) => {
-      const send: Listener = (revision) => subscriber.next({ type: 'changed', data: { revision } });
+      const send: Listener = (revision) =>
+        subscriber.next({ type: 'changed', data: { revision }, retry: RETRY_MS });
       this.streams += 1;
       const watch = this.watch(tournamentId, initial);
       watch.listeners.add(send);
       // Le premier message donne la révision courante : le client sait s'il a raté un changement.
       send(watch.revision);
-      const ping = setInterval(() => subscriber.next({ type: 'ping', data: {} }), PING_MS);
+      const ping = setInterval(
+        () => subscriber.next({ type: 'ping', data: {}, retry: RETRY_MS }),
+        PING_MS,
+      );
       const limit = setTimeout(() => subscriber.complete(), MAX_STREAM_MS);
       return () => {
         clearInterval(ping);
