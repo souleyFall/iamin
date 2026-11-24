@@ -1,5 +1,7 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ErrorNote } from '../components/ErrorNote';
+import { NextStep } from '../components/NextStep';
 import { Icon } from '../components/Icon';
 import { Lcd } from '../components/Lcd';
 import { useI18n } from '../lib/i18n';
@@ -10,14 +12,28 @@ import { useTournamentCtx } from './tournament-context';
 export function CheckIn() {
   const { tournament, isHolder, act } = useTournamentCtx();
   const { t, tn } = useI18n();
+  const navigate = useNavigate();
+  // L'enchaînement vers le tirage ne s'arme qu'après un pointage fait ici : ouvrir l'onglet pour regarder ne doit pas emporter ailleurs.
+  const [armed, setArmed] = useState(false);
   const open = isOpenStatus(tournament.status);
   const canWrite = isHolder && open;
   const accepted = tournament.registrations.filter((r) => r.status === 'ACCEPTED');
   const present = accepted.filter((r) => r.presence === 'PRESENT').length;
   const absent = accepted.filter((r) => r.presence === 'ABSENT').length;
   const unknown = accepted.length - present - absent;
-  const setPresence = (id: string, presence: 'PRESENT' | 'ABSENT' | 'UNKNOWN') =>
+  const setPresence = (id: string, presence: 'PRESENT' | 'ABSENT' | 'UNKNOWN') => {
+    setArmed(true);
     act.mutate({ method: 'PATCH', path: `/registrations/${id}`, body: { presence } });
+  };
+  // Tout le monde est pointé : l'étape est finie, on enchaîne sur le tirage (annulable).
+  const done =
+    armed &&
+    isHolder &&
+    tournament.status === 'CHECK_IN' &&
+    accepted.length >= 2 &&
+    present >= 2 &&
+    unknown === 0 &&
+    !act.isPending;
 
   const readouts = [
     { value: present, label: tn('check.present', present), color: undefined },
@@ -39,6 +55,16 @@ export function CheckIn() {
           </div>
         ))}
       </div>
+
+      {/* En haut, sous les compteurs : visible sans faire défiler la liste des joueurs. */}
+      {done && (
+        <NextStep
+          message={t('check.allDone')}
+          label={t('next.toDraw')}
+          onGo={() => void navigate('../tirage')}
+          onStay={() => setArmed(false)}
+        />
+      )}
 
       {tournament.status === 'REGISTRATION' && (
         <div className="card">

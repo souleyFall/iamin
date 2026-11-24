@@ -153,6 +153,9 @@ model Tournament {
   createdAt    DateTime           @default(now())
   /// Points du vainqueur quand l'adversaire déclare forfait (le forfait perd 0).
   forfeitScore Int                @default(1)
+  /// Ligue seulement : un match peut finir à égalité (selon le jeu). Choisi à la création, modifiable
+  /// avant le tirage. Toujours faux en élimination directe : on y désigne le vainqueur, sans score.
+  allowDraws   Boolean            @default(false)
   /// Langue de la page des joueurs et des textes du chat, choisie par l'admin ; le joueur peut en
   /// changer pour lui-même (jamais enregistré côté serveur).
   language     TournamentLanguage @default(fr)

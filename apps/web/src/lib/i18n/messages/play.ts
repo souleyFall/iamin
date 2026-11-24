@@ -44,6 +44,50 @@ export const play = defineMessages({
   'standings.player': ['Joueur', 'Player', 'Jugador'],
   'standings.points': ['Pts', 'Pts', 'Pts'],
   'standings.record': ['V-D', 'W-L', 'G-P'],
+  'standings.recordDraws': ['V-N-D', 'W-D-L', 'G-E-P'],
+
+  // Élimination directe : on désigne le vainqueur, sans score
+  'match.winnerMark': ['Vainqueur', 'Winner', 'Ganador'],
+  'match.enterWinner': [
+    'Désigner le vainqueur du match {n}',
+    'Pick the winner of match {n}',
+    'Designar al ganador del partido {n}',
+  ],
+  'winner.title': ['Qui a gagné ?', 'Who won?', '¿Quién ganó?'],
+  'winner.delete': ['Annuler le résultat', 'Cancel the result', 'Anular el resultado'],
+  'winner.back': ['Retour', 'Back', 'Volver'],
+  'winner.pick': ['{name} gagne', '{name} wins', 'Gana {name}'],
+  'winner.current': [
+    'Vainqueur actuel : {name}',
+    'Current winner: {name}',
+    'Ganador actual: {name}',
+  ],
+  'winner.forfeitWho': [
+    'Qui déclare forfait ? L’autre joueur gagne.',
+    'Who forfeits? The other player wins.',
+    '¿Quién abandona? El otro jugador gana.',
+  ],
+  'score.drawValid': ['Match nul', 'Draw', 'Empate'],
+  'score.drawNote': [
+    'Match nul : 1 point chacun.',
+    'Draw: 1 point each.',
+    'Empate: 1 punto cada uno.',
+  ],
+
+  // Enchaînement des étapes
+  'play.roundDone': [
+    '{round} : tous les matchs sont joués. Suite : {next}.',
+    '{round}: all matches played. Up next: {next}.',
+    '{round}: todos los partidos jugados. Siguiente: {next}.',
+  ],
+  'play.finished': ['Tournoi terminé', 'Tournament finished', 'Torneo terminado'],
+  'play.finishedHint': [
+    'Tous les matchs sont joués. Copie les résultats dans le chat Plato.',
+    'All matches are played. Copy the results to the Plato chat.',
+    'Todos los partidos están jugados. Copia los resultados al chat de Plato.',
+  ],
+  'play.copyResults': ['Copier les résultats', 'Copy the results', 'Copiar los resultados'],
+  'play.leagueFirst': ['Premier : {name}', 'First: {name}', 'Primero: {name}'],
   'standings.diff': ['Diff', 'Diff', 'Dif'],
 
   // Feuille de saisie du score

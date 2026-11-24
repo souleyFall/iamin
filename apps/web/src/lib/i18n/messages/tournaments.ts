@@ -58,6 +58,24 @@ export const tournaments = defineMessages({
     'Beyond that, approved players go on the waiting list.',
     'Más allá, los inscritos validados pasan a la lista de espera.',
   ],
+  'new.draws.label': ['Matchs nuls', 'Draws', 'Empates'],
+  'new.draws.no': ['Impossibles', 'Not allowed', 'No permitidos'],
+  'new.draws.yes': ['Autorisés', 'Allowed', 'Permitidos'],
+  'new.draws.hintNo': [
+    'Chaque match a un gagnant : un score à égalité sera refusé.',
+    'Every match has a winner: a tied score will be refused.',
+    'Cada partido tiene un ganador: se rechazará un marcador empatado.',
+  ],
+  'new.draws.hintYes': [
+    'Le jeu permet l’égalité : un nul rapporte 1 point à chacun.',
+    'The game allows ties: a draw gives each player 1 point.',
+    'El juego permite el empate: un empate da 1 punto a cada jugador.',
+  ],
+  'new.draws.knockout': [
+    'Élimination directe : tu désignes simplement le vainqueur de chaque match, sans score et sans match nul.',
+    'Knockout: you simply pick the winner of each match, with no score and no draws.',
+    'Eliminación directa: solo designas al ganador de cada partido, sin marcador ni empates.',
+  ],
   'new.submit': ['Créer le tournoi', 'Create the tournament', 'Crear el torneo'],
   'new.holderHint': [
     'Tu en auras la main : tu pourras la passer à un autre admin du groupe.',
@@ -209,6 +227,22 @@ export const tournaments = defineMessages({
     'El servidor elige la semilla y la publica con la lista de jugadores: nadie puede «probar» un sorteo hasta obtener el que quiere. El sorteo no se repite.',
   ],
   'draw.do': ['Faire le tirage', 'Do the draw', 'Hacer el sorteo'],
+  'draw.doneHint': [
+    'Le tirage est fait : les joueurs peuvent suivre les matchs.',
+    'The draw is done: players can follow the matches.',
+    'El sorteo está hecho: los jugadores pueden seguir los partidos.',
+  ],
+  'draw.seeMatches': ['Voir les matchs', 'See the matches', 'Ver los partidos'],
+  'draw.details': ['Détails du tirage', 'Draw details', 'Detalles del sorteo'],
+  'next.in': ['{label} dans {n} s', '{label} in {n} s', '{label} en {n} s'],
+  'next.now': ['Y aller', 'Go now', 'Ir ahora'],
+  'next.stay': ['Rester ici', 'Stay here', 'Quedarme aquí'],
+  'next.toDraw': ['Passage au tirage', 'Heading to the draw', 'Pasando al sorteo'],
+  'check.allDone': [
+    'Pointage terminé : tout le monde est noté.',
+    'Check-in done: everyone is marked.',
+    'Pasada de lista terminada: todos están marcados.',
+  ],
 
   // Langue du tournoi
   'lang.label': ['Langue du tournoi', 'Tournament language', 'Idioma del torneo'],

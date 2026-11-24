@@ -58,6 +58,26 @@ export const CATALOG: readonly Entry[] = [
     'La contraseña actual es incorrecta',
   ],
   ['Données invalides', 'Invalid data', 'Datos no válidos'],
+  [
+    'Une ligue demande le score du match',
+    'A league needs the match score',
+    'Una liga necesita el marcador del partido',
+  ],
+  [
+    'En élimination directe, désignez le vainqueur : pas de score',
+    'In a knockout, pick the winner: no score',
+    'En eliminación directa, designa al ganador: sin marcador',
+  ],
+  [
+    'Le tirage est fait : les matchs nuls sont figés',
+    'The draw is done: draws can no longer be changed',
+    'El sorteo está hecho: los empates ya no se pueden cambiar',
+  ],
+  [
+    'Les matchs nuls n’existent qu’en ligue',
+    'Draws only exist in a league',
+    'Los empates solo existen en una liga',
+  ],
   ['Erreur interne du serveur', 'Internal server error', 'Error interno del servidor'],
   ['Session introuvable', 'Session not found', 'Sesión no encontrada'],
   [

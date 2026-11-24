@@ -159,3 +159,51 @@ describe('computeStandings', () => {
     expect(() => computeStandings(league, { R1M1: { a: 1, b: 1 } })).toThrow(/égalité/);
   });
 });
+
+describe('matchs nuls', () => {
+  const league = buildLeague(players(3), 's');
+  const [m1, m2, m3] = league.rounds.flat();
+  const tie = (id: string, n = 1) => ({ [id]: { a: n, b: n } });
+
+  it('refuse l’égalité par défaut, l’accepte quand le tournoi l’autorise', () => {
+    const results = tie(m1!.id);
+    expect(() => computeStandings(league, results)).toThrow(/égalité/);
+    expect(() => computeStandings(league, results, { allowDraws: false })).toThrow(/égalité/);
+    expect(() => computeStandings(league, results, { allowDraws: true })).not.toThrow();
+  });
+
+  it('donne un point à chacun (réglable) et compte les nuls dans le bilan', () => {
+    const s = computeStandings(league, tie(m1!.id, 2), { allowDraws: true });
+    const row = (id: string) => s.rows.find((r) => r.playerId === id);
+    expect(row(m1!.a)).toMatchObject({ draws: 1, wins: 0, losses: 0, points: 1, played: 1 });
+    expect(row(m1!.b)).toMatchObject({ draws: 1, wins: 0, losses: 0, points: 1, played: 1 });
+    const generous = computeStandings(league, tie(m1!.id, 2), {
+      allowDraws: true,
+      pointsForDraw: 2,
+    });
+    expect(generous.rows.find((r) => r.playerId === m1!.a)?.points).toBe(2);
+  });
+
+  it('une ligue où tout finit nul est complète, et départagée par l’ordre du tirage', () => {
+    const results = { ...tie(m1!.id), ...tie(m2!.id), ...tie(m3!.id) };
+    const s = computeStandings(league, results, { allowDraws: true });
+    expect(s.complete).toBe(true);
+    expect(s.rows.every((r) => r.points === 2 && r.draws === 2)).toBe(true);
+    expect(s.rows.map((r) => r.playerId)).toEqual(league.draw);
+  });
+
+  it('les confrontations directes comptent aussi les nuls', () => {
+    // A bat B, B bat C, C bat A : tous à 3 points. Un nul entre A et B change le mini-classement.
+    const all = league.rounds.flat();
+    const find = (x: string, y: string) =>
+      all.find((m) => [m.a, m.b].sort().join() === [x, y].sort().join())!;
+    const ab = find('p1', 'p2');
+    const results = {
+      [ab.id]: { a: 1, b: 1 },
+      ...Object.fromEntries(all.filter((m) => m.id !== ab.id).map((m) => [m.id, { a: 2, b: 0 }])),
+    };
+    const s = computeStandings(league, results, { allowDraws: true });
+    expect(s.complete).toBe(true);
+    expect(s.rows.reduce((n, r) => n + r.draws, 0)).toBe(2); // un nul = un point pour chacun des deux
+  });
+});

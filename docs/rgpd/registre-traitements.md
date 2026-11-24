@@ -50,8 +50,9 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 |              |                                                                                                                                    |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Finalité     | Retracer qui a modifié un tirage, un score ou le relais (contestation, bonne foi)                                                  |
-| Données      | Compte admin auteur, type d'action, date, identifiants et scores : aucun pseudo                                                    |
-| Conservation | Avec le tournoi ; l'auteur devient « inconnu » si son compte est supprimé                                                          |
+| Données      | Compte admin auteur, type d'action, date, identifiants, scores ou vainqueur : aucun pseudo n'est enregistré                        |
+| Affichage    | L'écran Journal retrouve les pseudos par leur identifiant au moment de l'affichage, pour les admins du groupe seulement (D29)      |
+| Conservation | Avec le tournoi ; l'auteur devient « admin supprimé » si son compte est supprimé, un joueur supprimé devient « joueur retiré »     |
 | Minimisation | Les actions d'un joueur sans compte n'ont pas d'auteur et ne contiennent que son identifiant d'inscription, supprimé avec sa ligne |
 
 ## Traitement 5 : sauvegardes de la base

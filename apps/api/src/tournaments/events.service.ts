@@ -79,6 +79,57 @@ export class EventsService {
     return {
       events: page,
       nextBefore: rows.length > page.length ? (page[page.length - 1]?.id ?? null) : null,
+      refs: await this.namesIn(
+        tournamentId,
+        page.map((e) => e.payload),
+      ),
+    };
+  }
+
+  /**
+   * Les noms que le journal affiche. La charge d'un événement ne garde que des identifiants (un
+   * pseudo effacé ne doit pas rester dans l'historique) : on les remplace ici, à la lecture. Un
+   * joueur ou un compte supprimé depuis n'a plus de nom, et l'écran écrit « joueur retiré ».
+   */
+  private async namesIn(tournamentId: string, payloads: unknown[]) {
+    const players = new Set<string>();
+    const users = new Set<string>();
+    const text = (v: unknown) => (typeof v === 'string' ? v : null);
+    for (const payload of payloads) {
+      if (typeof payload !== 'object' || payload === null) continue;
+      const p = payload as Record<string, unknown>;
+      for (const key of ['registrationId', 'outId', 'inId']) {
+        const id = text(p[key]);
+        if (id) players.add(id);
+      }
+      if (Array.isArray(p.registrationIds)) {
+        for (const v of p.registrationIds) {
+          const id = text(v);
+          if (id) players.add(id);
+        }
+      }
+      for (const key of ['fromUserId', 'toUserId']) {
+        const id = text(p[key]);
+        if (id) users.add(id);
+      }
+    }
+    const [registrations, accounts] = await Promise.all([
+      players.size === 0
+        ? []
+        : this.prisma.registration.findMany({
+            where: { tournamentId, id: { in: [...players] } },
+            select: { id: true, platoName: true },
+          }),
+      users.size === 0
+        ? []
+        : this.prisma.user.findMany({
+            where: { id: { in: [...users] } },
+            select: { id: true, username: true },
+          }),
+    ]);
+    return {
+      players: Object.fromEntries(registrations.map((r) => [r.id, r.platoName])),
+      users: Object.fromEntries(accounts.map((u) => [u.id, u.username])),
     };
   }
 }

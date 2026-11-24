@@ -955,3 +955,164 @@ textarea.input {
   align-items: center;
   cursor: pointer;
 }
+
+/* ----- Élimination directe : on désigne le vainqueur, sans score ----- */
+.match-win {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ok);
+}
+.winner-pick {
+  display: grid;
+  gap: 12px;
+}
+.winner-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 18px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.winner-btn svg {
+  color: var(--ok);
+  flex: none;
+}
+.winner-btn.is-current {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+.winner-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.winner-btn:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ----- Enchaînement des étapes : un tour fini mène au suivant ----- */
+.next-step {
+  display: grid;
+  gap: 8px;
+  border-color: var(--ok);
+}
+.next-step-count {
+  color: var(--muted);
+  font-size: 14px;
+}
+.finish-card {
+  display: grid;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .round-enter {
+    animation: round-in 260ms ease-out both;
+  }
+  .next-step {
+    animation: round-in 220ms ease-out both;
+  }
+}
+@keyframes round-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ----- Journal : jours, familles d'événements, auteur ----- */
+.journal {
+  display: grid;
+  gap: 0;
+  margin: 8px 0 12px;
+}
+.journal-day {
+  margin: 18px 0 6px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  color: var(--muted);
+}
+.journal-row {
+  --tone: var(--muted);
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.journal-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.cat-players {
+  --tone: var(--link);
+}
+.cat-checkin {
+  --tone: var(--ok);
+}
+.cat-draw {
+  --tone: var(--accent);
+}
+.cat-match {
+  --tone: var(--action);
+}
+.cat-relay {
+  --tone: var(--bad);
+}
+.cat-settings {
+  --tone: var(--muted);
+}
+.journal-body {
+  flex: 1;
+  min-width: 0;
+}
+.journal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.journal-title {
+  font-weight: 700;
+}
+.journal-detail {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.journal-actor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.avatar-sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.avatar-sm.is-gone {
+  opacity: 0.5;
+}

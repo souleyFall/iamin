@@ -26,6 +26,8 @@ const score = z.number().int().min(0).max(99);
 const version = z.number().int().min(0);
 const resultSchema = z.union([
   z.object({ a: score, b: score, version: version.optional() }).strict(),
+  // Élimination directe : on désigne le vainqueur, sans score.
+  z.object({ winner: z.enum(['a', 'b']), version: version.optional() }).strict(),
   z.object({ forfeit: z.enum(['a', 'b']), version: version.optional() }).strict(),
 ]);
 const replaceSchema = z.object({ outId: idSchema, inId: idSchema });

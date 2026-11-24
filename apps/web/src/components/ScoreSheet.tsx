@@ -8,11 +8,15 @@ import { Lcd } from './Lcd';
 
 const MAX = 99;
 
-/** Un match ne finit pas à égalité (le moteur le refuse aussi) ; scores entiers de 0 à 99. */
+/**
+ * Scores entiers de 0 à 99. Un match ne finit pas à égalité (le moteur le refuse aussi), sauf dans
+ * une ligue dont le créateur a autorisé les matchs nuls (`allowDraw`).
+ */
 export function validateScore(
   s: Score,
   t: I18n['t'] = (key, params) => translate('fr', key, params),
-): { ok: true; winner: 'a' | 'b' } | { ok: false; reason: string } {
+  allowDraw = false,
+): { ok: true; winner: 'a' | 'b' | 'draw' } | { ok: false; reason: string } {
   if (
     !Number.isInteger(s.a) ||
     !Number.isInteger(s.b) ||
@@ -23,7 +27,9 @@ export function validateScore(
   ) {
     return { ok: false, reason: t('score.range', { max: MAX }) };
   }
-  if (s.a === s.b) return { ok: false, reason: t('score.tie') };
+  if (s.a === s.b) {
+    return allowDraw ? { ok: true, winner: 'draw' } : { ok: false, reason: t('score.tie') };
+  }
   return { ok: true, winner: s.a > s.b ? 'a' : 'b' };
 }
 
@@ -33,6 +39,8 @@ interface Props {
   nameB: string;
   initial: Score | null;
   forfeitScore: number;
+  /** Ligue dont les matchs nuls sont autorisés : un score à égalité est valide. */
+  allowDraw?: boolean;
   pending: boolean;
   error: Error | null;
   onSave: (score: Score) => void;
@@ -47,7 +55,7 @@ export function ScoreSheet(p: Props) {
   const [score, setScore] = useState<Score>(p.initial ?? { a: 0, b: 0 });
   const [forfeiting, setForfeiting] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const verdict = validateScore(score, t);
+  const verdict = validateScore(score, t, p.allowDraw === true);
   const names = { a: p.nameA, b: p.nameB };
 
   useEffect(() => {
@@ -124,7 +132,9 @@ export function ScoreSheet(p: Props) {
             {verdict.ok ? (
               <p className="notice notice-ok">
                 <Icon name="check" size={18} stroke={2.5} />
-                {t('score.valid', { name: names[verdict.winner] })}
+                {verdict.winner === 'draw'
+                  ? t('score.drawNote')
+                  : t('score.valid', { name: names[verdict.winner] })}
               </p>
             ) : (
               <p className="notice notice-bad">{verdict.reason}</p>
