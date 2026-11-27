@@ -6,6 +6,7 @@ import type { FeedbackKind } from '../api/types';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
+import { PrivacyLink } from '../components/PrivacyLink';
 import { useI18n } from '../lib/i18n';
 import { FEEDBACK_KIND_KEY } from '../lib/labels';
 
@@ -127,6 +128,9 @@ export function Feedback() {
         <p className="hint">
           {signedIn ? t('fb.withAccount') : t('fb.anonymous')} {t('fb.ownerOnly')}{' '}
           {!signedIn && <Link to="/connexion">{t('fb.signIn')}</Link>}
+        </p>
+        <p className="hint">
+          <PrivacyLink />
         </p>
       </form>
     </main>

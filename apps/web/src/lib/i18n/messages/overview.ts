@@ -50,7 +50,6 @@ export const overview = defineMessages({
   'ov.filter.status': ['État', 'Status', 'Estado'],
   'ov.filter.all': ['Tous', 'All', 'Todos'],
   'ov.filter.REGISTRATION': ['Inscriptions', 'Registration', 'Inscripciones'],
-  'ov.filter.CHECK_IN': ['Pointage', 'Check-in', 'Pasada de lista'],
   'ov.filter.STARTED': ['En cours', 'Running', 'En curso'],
   'ov.filter.FINISHED': ['Terminés', 'Finished', 'Terminados'],
   'ov.filter.group': ['Groupe', 'Group', 'Grupo'],

@@ -230,6 +230,13 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Langue des codes** : `code` et les clés de réponse restent en anglais technique, lus par le programme et jamais affichés.
 - **Qualité des traductions** : écrites par moi, à faire relire par une personne qui parle la langue avant d'ouvrir au public (surtout l'espagnol, visible dans les messages du chat).
 
+## D31. Date des tournois, page de confidentialité, filtres du tableau de bord
+
+- **Date et heure** (`Tournament.startsAt`, migration) : demandées à la création (obligatoires dans l'écran, facultatives dans l'API et vides pour les tournois d'avant). Enregistrées en **UTC** ; l'admin saisit à l'heure de son appareil et chaque personne lit à la sienne, **avec le nom du fuseau** : les joueurs Plato sont partout dans le monde. L'API refuse une heure sans décalage horaire ou une année hors 2020-2100. Le détenteur la change à tout moment (un tournoi se reporte), le journal le note. Elle apparaît sur la page des joueurs, la liste et l'en-tête des tournois, et le tableau de bord. Pas dans les messages copiés pour le chat : un texte figé ne s'adapte pas au fuseau de chacun.
+- **Filtres du tableau de bord** : « Tous », « Inscriptions », « En cours », « Terminés ». « Inscriptions » réunit les inscriptions ouvertes **et le pointage** (le tirage n'est pas fait) ; la carte garde l'état exact.
+- **Page de confidentialité** (`/confidentialite`, publique, trois langues) : responsable, contact, données des joueurs et des admins, avis, journal technique, stockage sur l'appareil, durées, droits, CNIL. Liée depuis l'inscription d'un joueur, la page du tournoi, la création d'un compte, la connexion, le formulaire d'avis et l'écran Moi. **Règle** : elle dit ce que le code fait, pas ce qui est prévu. En la rédigeant, deux durées annoncées par le registre se sont révélées **non codées** (inscriptions à 12 mois, tickets de réinitialisation à 30 jours) : registre corrigé, page honnête. Un test vérifie ses rubriques et ses liens.
+- **À faire avant la mise en ligne** : adresse de contact dédiée (le formulaire ne permet pas de répondre), nommer l'hébergeur et son pays, confirmer les durées et coder les purges, faire relire le texte et les traductions, examiner le cas des mineurs. Le texte n'est pas un avis juridique.
+
 ## D30. Tableau de bord du propriétaire, en lecture seule
 
 - **Demande** : le propriétaire veut une vue d'ensemble de la plateforme (groupes, super admins, admins, tournois, inscrits, comptes actifs, filtres par état), **sans pouvoir modifier ni intervenir**.

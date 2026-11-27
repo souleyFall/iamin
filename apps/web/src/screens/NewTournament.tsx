@@ -7,6 +7,7 @@ import type { Tournament, TournamentFormat, TournamentLanguage } from '../api/ty
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { useCurrentGroup } from '../groups/current';
+import { deviceTimeZone, localInputToIso } from '../lib/datetime';
 import { LOCALES, useI18n } from '../lib/i18n';
 
 export function NewTournament() {
@@ -21,6 +22,8 @@ export function NewTournament() {
   const [allowDraws, setAllowDraws] = useState(false);
   // Par défaut : la langue de l'écran de l'admin, le plus souvent celle de son groupe.
   const [language, setLanguage] = useState<TournamentLanguage>(locale);
+  const [when, setWhen] = useState('');
+  const startsAt = localInputToIso(when);
   const groupId = current?.id;
 
   const create = useMutation({
@@ -31,6 +34,7 @@ export function NewTournament() {
         capacity,
         language,
         allowDraws: format === 'LEAGUE' && allowDraws,
+        startsAt: startsAt ?? undefined,
       }),
     onSuccess: async (created) => {
       await client.invalidateQueries({ queryKey: keys.scope(groupId ?? '') });
@@ -75,6 +79,20 @@ export function NewTournament() {
             required
           />
           {fieldError.name && <p className="error">{fieldError.name}</p>}
+        </div>
+
+        <div className="field">
+          <label htmlFor="when">{t('when.label')}</label>
+          <input
+            id="when"
+            className="input"
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+            required
+          />
+          <p className="hint">{t('when.hint', { zone: deviceTimeZone() })}</p>
+          {fieldError.startsAt && <p className="error">{fieldError.startsAt}</p>}
         </div>
 
         <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -156,7 +174,7 @@ export function NewTournament() {
         <button
           className="key key-wide"
           type="submit"
-          disabled={create.isPending || name.trim().length < 2}
+          disabled={create.isPending || name.trim().length < 2 || startsAt === null}
         >
           {t('new.submit')}
         </button>

@@ -28,6 +28,7 @@ const summary = (over: Partial<TournamentSummary> = {}): TournamentSummary => ({
   allowDraws: false,
   language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
+  startsAt: null,
   drawnAt: null,
   drawSeed: null,
   holder: { id: 'u-me', username: 'alice' },

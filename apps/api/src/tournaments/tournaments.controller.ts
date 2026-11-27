@@ -38,6 +38,12 @@ const nameSchema = z
   .refine((v) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(v), 'Caractères non autorisés');
 const capacitySchema = z.number().int().min(2).max(MAX_CAPACITY);
 
+/** Date et heure avec leur décalage horaire : sans lui, l'heure ne voudrait rien dire ailleurs. */
+const startsAtSchema = z
+  .string()
+  .datetime({ offset: true, message: 'Date ou heure invalide' })
+  .refine((v) => v >= '2020' && v < '2101', 'Date ou heure invalide');
+
 const createSchema = z.object({
   name: nameSchema,
   format: z.nativeEnum(TournamentFormat),
@@ -45,6 +51,7 @@ const createSchema = z.object({
   forfeitScore: z.number().int().min(1).max(99).optional(),
   language: z.nativeEnum(TournamentLanguage).optional(),
   allowDraws: z.boolean().optional(),
+  startsAt: startsAtSchema.optional(),
 });
 const updateSchema = z
   .object({
@@ -53,6 +60,7 @@ const updateSchema = z
     forfeitScore: z.number().int().min(1).max(99).optional(),
     language: z.nativeEnum(TournamentLanguage).optional(),
     allowDraws: z.boolean().optional(),
+    startsAt: startsAtSchema.nullable().optional(),
     // Le tirage (PR 9) fait passer en STARTED puis FINISHED : on ne les fixe pas à la main.
     status: z.enum([TournamentStatus.REGISTRATION, TournamentStatus.CHECK_IN]).optional(),
   })

@@ -3,6 +3,7 @@ import { useAction, useDraw, useGroup, useTournament } from '../api/queries';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
+import { When } from '../components/When';
 import { useCurrentGroup } from '../groups/current';
 import { useI18n } from '../lib/i18n';
 import type { MessageKey } from '../lib/i18n/messages';
@@ -82,7 +83,9 @@ function Loaded({
         </Link>
         <div className="topbar-title">
           <h1 className="title">{tour.name}</h1>
-          <p className="subtitle">{t(FORMAT_KEY[tour.format])}</p>
+          <p className="subtitle">
+            {t(FORMAT_KEY[tour.format])} · <When value={tour.startsAt} />
+          </p>
         </div>
         <Link className="icon-btn" to="copier" aria-label={t('tournament.copyForChat')}>
           <Icon name="copy" />

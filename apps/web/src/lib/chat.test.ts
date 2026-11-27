@@ -31,6 +31,7 @@ const tournament = (format: Tournament['format'], registrations: Registration[])
   allowDraws: false,
   language: 'fr',
   createdAt: '2026-11-22T10:00:00Z',
+  startsAt: null,
   drawnAt: '2026-11-22T11:00:00Z',
   drawSeed: 'seed',
   holder: null,

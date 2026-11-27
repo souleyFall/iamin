@@ -14,6 +14,7 @@ import { NewGroup } from './screens/NewGroup';
 import { NewTournament } from './screens/NewTournament';
 import { Overview } from './screens/Overview';
 import { Play } from './screens/Play';
+import { Privacy } from './screens/Privacy';
 import { PublicTournament } from './screens/PublicTournament';
 import { Registrations } from './screens/Registrations';
 import { Security } from './screens/Security';
@@ -28,6 +29,7 @@ export function App() {
       <Route path="/t/:slug" element={<PublicTournament />} />
       <Route path="/invitation/:token" element={<AcceptInvitation />} />
       <Route path="/avis" element={<Feedback />} />
+      <Route path="/confidentialite" element={<Privacy />} />
       <Route element={<Layout />}>
         <Route index element={<Tournaments />} />
         <Route path="nouveau" element={<NewTournament />} />

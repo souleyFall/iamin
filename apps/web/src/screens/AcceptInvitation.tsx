@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
+import { PrivacyLink } from '../components/PrivacyLink';
 import { useI18n } from '../lib/i18n';
 
 /**
@@ -153,7 +154,9 @@ export function AcceptInvitation() {
           </p>
         </form>
       )}
-      <p className="notice-standalone">{t('common.disclaimer')}</p>
+      <p className="notice-standalone">
+        {t('common.disclaimer')} <PrivacyLink />
+      </p>
     </main>
   );
 }

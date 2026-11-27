@@ -193,7 +193,15 @@ export class OverviewService {
   /** Les tournois de toute la plateforme, filtrés et paginés, du plus récent au plus ancien. */
   async tournaments(filter: TournamentFilter) {
     const where: Prisma.TournamentWhereInput = {
-      ...(filter.status ? { status: filter.status } : {}),
+      // « Inscriptions » couvre aussi le pointage : le tirage n'est pas encore fait (D31).
+      ...(filter.status
+        ? {
+            status:
+              filter.status === TournamentStatus.REGISTRATION
+                ? { in: [TournamentStatus.REGISTRATION, TournamentStatus.CHECK_IN] }
+                : filter.status,
+          }
+        : {}),
       ...(filter.format ? { format: filter.format } : {}),
       ...(filter.groupId ? { groupId: filter.groupId } : {}),
       ...(filter.q ? { name: { contains: filter.q, mode: 'insensitive' } } : {}),
@@ -220,6 +228,7 @@ export class OverviewService {
           capacity: true,
           createdAt: true,
           drawnAt: true,
+          startsAt: true,
           group: { select: { id: true, name: true } },
           holder: { select: { username: true } },
         },

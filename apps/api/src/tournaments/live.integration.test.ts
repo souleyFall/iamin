@@ -142,6 +142,35 @@ describe.skipIf(!testDatabaseUrl)('page publique et direct (base réelle)', () =
     expect(new TextDecoder().decode(first.value)).toContain('retry: 15000');
   });
 
+  it('la page des joueurs donne la date prévue ; elle se change, s’efface, et se valide', async () => {
+    const { group, admin } = await setup();
+    const { slug, base } = await create(admin, group.id, 'Coupe datée');
+    const startsAt = async () => ((await view(slug)).body as { startsAt: string | null }).startsAt;
+    expect(await startsAt()).toBeNull();
+
+    // L'heure arrive avec son décalage, et ressort en UTC : chaque écran la remet dans son fuseau.
+    const set = await admin.request('PATCH', base, { startsAt: '2026-12-05T20:30:00+01:00' });
+    expect(set.status).toBe(200);
+    expect(await startsAt()).toBe('2026-12-05T19:30:00.000Z');
+    const info = await new Client(t.url, undefined).request('GET', `/public/tournaments/${slug}`);
+    expect((info.body as { startsAt: string }).startsAt).toBe('2026-12-05T19:30:00.000Z');
+
+    for (const bad of ['demain', '2026-12-05T20:30:00', '1999-01-01T10:00:00Z', 12]) {
+      expect((await admin.request('PATCH', base, { startsAt: bad })).status, String(bad)).toBe(400);
+    }
+    expect((await admin.request('PATCH', base, { startsAt: null })).status).toBe(200);
+    expect(await startsAt()).toBeNull();
+
+    // La date se donne aussi dès la création.
+    const created = await admin.request('POST', `/groups/${group.id}/tournaments`, {
+      name: 'Datée à la création',
+      format: 'ELIMINATION',
+      capacity: 4,
+      startsAt: '2027-01-10T14:00:00Z',
+    });
+    expect((created.body as { startsAt: string }).startsAt).toBe('2027-01-10T14:00:00.000Z');
+  });
+
   it('montre les inscrits validés mais jamais les inscriptions en attente', async () => {
     const { group, admin } = await setup();
     const { slug, base } = await create(admin, group.id, 'Coupe publique');

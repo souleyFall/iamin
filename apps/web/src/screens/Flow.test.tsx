@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -98,6 +98,7 @@ const tournament = (over: Partial<Tournament> = {}): Tournament => ({
   forfeitScore: 1,
   allowDraws: false,
   language: 'fr',
+  startsAt: null,
   createdAt: '2026-11-24T10:00:00Z',
   drawnAt: '2026-11-24T10:05:00Z',
   drawSeed: 'seed',
@@ -337,6 +338,9 @@ describe('tirage : les matchs s’ouvrent sans clic de plus', () => {
 describe('création : le créateur choisit si les matchs nuls existent', () => {
   async function fill(user: ReturnType<typeof userEvent.setup>) {
     await user.type(await screen.findByLabelText('Nom du tournoi'), 'Ma ligue');
+    fireEvent.change(screen.getByLabelText('Date et heure du tournoi'), {
+      target: { value: '2026-12-05T20:30' },
+    });
   }
   const created = () => calls.find((c) => c.key === 'POST /groups/g1/tournaments')?.body;
 
@@ -360,6 +364,22 @@ describe('création : le créateur choisit si les matchs nuls existent', () => {
     ).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Créer le tournoi' }));
     await waitFor(() => expect(created()).toMatchObject({ format: 'LEAGUE', allowDraws: true }));
+  });
+
+  it('demande la date et l’heure : sans elles on ne crée pas, et elles partent en UTC', async () => {
+    const user = renderAt('/nouveau');
+    await user.type(await screen.findByLabelText('Nom du tournoi'), 'Ma coupe');
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Créer le tournoi' });
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Date et heure du tournoi'), {
+      target: { value: '2026-12-05T20:30' },
+    });
+    expect(submit.disabled).toBe(false);
+    await user.click(submit);
+    // La saisie est à l'heure de l'appareil ; le serveur reçoit le même instant en UTC.
+    await waitFor(() =>
+      expect(created()).toMatchObject({ startsAt: new Date('2026-12-05T20:30').toISOString() }),
+    );
   });
 
   it('en ligue, sans toucher au choix : les nuls sont refusés', async () => {

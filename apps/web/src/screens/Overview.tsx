@@ -12,12 +12,14 @@ import type {
 } from '../api/types';
 import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
+import { When } from '../components/When';
 import { useI18n } from '../lib/i18n';
 import { FORMAT_KEY, initialOf, STATUS_CLASS, STATUS_KEY } from '../lib/labels';
 
 const REFRESH_MS = 60_000;
 const ONLINE_MS = 15 * 60 * 1000;
-const STATUSES: TournamentStatus[] = ['REGISTRATION', 'CHECK_IN', 'STARTED', 'FINISHED'];
+/** Trois filtres seulement : « Inscriptions » réunit aussi le pointage, avant le tirage. */
+const STATUSES = ['REGISTRATION', 'STARTED', 'FINISHED'] as const;
 type Section = 'tournaments' | 'groups' | 'people';
 
 /**
@@ -173,7 +175,12 @@ function Tournaments({ data }: { data: Summary }) {
         </button>
         {STATUSES.map((s) => (
           <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)}>
-            {t(`ov.filter.${s}`)} <span className="chip-count">{data.tournaments[s]}</span>
+            {t(`ov.filter.${s}`)}{' '}
+            <span className="chip-count">
+              {s === 'REGISTRATION'
+                ? data.tournaments.REGISTRATION + data.tournaments.CHECK_IN
+                : data.tournaments[s]}
+            </span>
           </button>
         ))}
       </div>
@@ -228,6 +235,9 @@ function Tournaments({ data }: { data: Summary }) {
             </span>
             <span className="muted">
               {tour.group.name} · {t(FORMAT_KEY[tour.format])}
+            </span>
+            <span className="when-line">
+              <When value={tour.startsAt} />
             </span>
             <span className="tabular">
               {t('ov.places', { n: tour.counts.accepted, capacity: tour.capacity })}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,7 @@ const view = (language: 'fr' | 'en' | 'es'): PublicView => ({
   status: 'REGISTRATION',
   language,
   registrationOpen: true,
+  startsAt: null,
   revision: 1,
   drawn: false,
   players: [{ id: 'p1', platoName: 'Sana.fx', status: 'ACCEPTED' }],
@@ -120,6 +121,7 @@ const tournament = (over: Partial<Tournament> = {}): Tournament => ({
   forfeitScore: 1,
   allowDraws: false,
   language: 'fr',
+  startsAt: null,
   createdAt: '2026-11-22T10:00:00Z',
   drawnAt: null,
   drawSeed: null,
@@ -148,6 +150,9 @@ describe('réglage par l’admin', () => {
     const spanish = await screen.findByRole('button', { name: 'Español' });
     expect(spanish.getAttribute('aria-pressed')).toBe('true');
     await user.type(screen.getByLabelText('Nombre del torneo'), 'Copa de otoño');
+    fireEvent.change(screen.getByLabelText('Fecha y hora del torneo'), {
+      target: { value: '2026-12-05T20:30' },
+    });
     await user.click(screen.getByRole('button', { name: 'English' }));
     await user.click(screen.getByRole('button', { name: 'Crear el torneo' }));
     await waitFor(() =>

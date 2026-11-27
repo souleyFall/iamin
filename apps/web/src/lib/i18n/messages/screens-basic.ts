@@ -112,6 +112,7 @@ export const screensBasic = defineMessages({
   'journal.field.forfeitScore': ['score de forfait', 'forfeit score', 'puntuación de abandono'],
   'journal.field.allowDraws': ['matchs nuls', 'draws', 'empates'],
   'journal.field.status': ['phase', 'phase', 'fase'],
+  'journal.field.startsAt': ['date et heure', 'date and time', 'fecha y hora'],
   'journal.d.relay': ['{from} → {to}', '{from} → {to}', '{from} → {to}'],
   'event.TOURNAMENT_CREATED': ['Tournoi créé', 'Tournament created', 'Torneo creado'],
   'event.TOURNAMENT_UPDATED': ['Réglages modifiés', 'Settings changed', 'Ajustes modificados'],

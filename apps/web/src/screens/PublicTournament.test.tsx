@@ -16,6 +16,7 @@ const open: PublicView = {
   status: 'REGISTRATION',
   language: 'fr',
   registrationOpen: true,
+  startsAt: null,
   revision: 3,
   drawn: false,
   players: [

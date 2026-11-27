@@ -76,6 +76,14 @@ export const tournaments = defineMessages({
     'Knockout: you simply pick the winner of each match, with no score and no draws.',
     'Eliminación directa: solo designas al ganador de cada partido, sin marcador ni empates.',
   ],
+  'when.label': ['Date et heure du tournoi', 'Tournament date and time', 'Fecha y hora del torneo'],
+  'when.hint': [
+    'À l’heure de ton appareil ({zone}). Chaque joueur la voit à la sienne.',
+    'In your device’s time ({zone}). Each player sees it in their own.',
+    'En la hora de tu dispositivo ({zone}). Cada jugador la ve en la suya.',
+  ],
+  'when.none': ['Date non précisée', 'Date not set', 'Fecha sin indicar'],
+  'when.save': ['Enregistrer la date', 'Save the date', 'Guardar la fecha'],
   'new.submit': ['Créer le tournoi', 'Create the tournament', 'Crear el torneo'],
   'new.holderHint': [
     'Tu en auras la main : tu pourras la passer à un autre admin du groupe.',

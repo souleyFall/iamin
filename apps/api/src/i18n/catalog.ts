@@ -58,6 +58,7 @@ export const CATALOG: readonly Entry[] = [
     'La contraseña actual es incorrecta',
   ],
   ['Données invalides', 'Invalid data', 'Datos no válidos'],
+  ['Date ou heure invalide', 'Invalid date or time', 'Fecha u hora no válida'],
   [
     'Une ligue demande le score du match',
     'A league needs the match score',

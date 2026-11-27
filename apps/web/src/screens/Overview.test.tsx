@@ -66,6 +66,7 @@ const page: OverviewTournamentPage = {
       capacity: 8,
       createdAt: '2026-11-20T10:00:00Z',
       drawnAt: null,
+      startsAt: null,
       group: { id: 'g1', name: 'Les Stratèges' },
       holder: 'boss',
       counts: { accepted: 8, waitlist: 2, pending: 0 },
@@ -133,6 +134,10 @@ describe('tableau de bord du propriétaire', () => {
     expect(await screen.findByText('Coupe du soir')).toBeTruthy();
     expect(screen.getByText('8/8 places · 2 en liste d’attente')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Terminés 1' })).toBeTruthy();
+    // Trois filtres seulement : le pointage est compté avec les inscriptions.
+    expect(screen.getByRole('button', { name: 'Inscriptions 1' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Pointage/ })).toBeNull();
+    expect(screen.getByText('Date non précisée')).toBeTruthy();
   });
 
   it('filtre par état, groupe, format et nom : la demande part au serveur', async () => {
