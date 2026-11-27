@@ -80,7 +80,7 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Deux niveaux de rôle** : sur la plateforme (`PLATFORM_OWNER` ou `MEMBER`) et dans chaque groupe (`SUPER_ADMIN` ou `ADMIN`, table `GroupMember`). Un compte peut être super admin d'un groupe et simple admin d'un autre. Cela remplace les rôles globaux de D13 (migration cassante, sans conséquence avant la mise en ligne).
 - **Seule porte d'entrée vers les données d'un groupe : `GroupGuard`.** Le groupe est lu dans le chemin (`/groups/:groupId/…`), jamais dans le corps de la requête, et l'appartenance est vérifiée à chaque appel : retirer un membre lui ferme l'accès immédiatement, sans attendre la fin de sa session.
 - **404 uniforme** : un compte qui n'est pas membre reçoit exactement la même réponse que pour un groupe inexistant ou un identifiant mal formé. Impossible de deviner quels groupes existent. Un membre dont le rôle ne suffit pas reçoit 403.
-- **Le propriétaire de la plateforme** voit la liste de tous les groupes et peut réinviter un super admin dans un groupe (assistance), mais ne lit pas les données internes des groupes : `allowOwner` est un choix explicite par route. ~~Il crée les groupes~~ : remplacé par D22.
+- **Le propriétaire de la plateforme** voit la liste de tous les groupes et peut réinviter un super admin dans un groupe (assistance), mais ne lit pas les données internes des groupes : `allowOwner` est un choix explicite par route (une synthèse en lecture seule est permise depuis D30). ~~Il crée les groupes~~ : remplacé par D22.
 - **Personne ne s'attribue un rôle supérieur** : un super admin n'invite que des admins ; seul le propriétaire invite un super admin. Une invitation vise un groupe et un rôle précis, et ne sert qu'une fois.
 - **Un compte existant rejoint un autre groupe** avec `POST /invitations/join` (session ouverte), sans créer de second compte.
 - **Règle pour les PR suivantes** : toute route qui touche aux données d'un groupe (tournois, inscriptions, matchs…) passe par `GroupGuard` et s'accompagne d'un test d'accès croisé.
@@ -229,6 +229,16 @@ Boîtier bleu nuit, écran LCD à points rétroéclairé pour les scores (police
 - **Découverte** : la limite de débit renvoyait « ThrottlerException: Too Many Requests » en anglais brut à tout le monde ; elle est ramenée à la phrase du catalogue.
 - **Langue des codes** : `code` et les clés de réponse restent en anglais technique, lus par le programme et jamais affichés.
 - **Qualité des traductions** : écrites par moi, à faire relire par une personne qui parle la langue avant d'ouvrir au public (surtout l'espagnol, visible dans les messages du chat).
+
+## D30. Tableau de bord du propriétaire, en lecture seule
+
+- **Demande** : le propriétaire veut une vue d'ensemble de la plateforme (groupes, super admins, admins, tournois, inscrits, comptes actifs, filtres par état), **sans pouvoir modifier ni intervenir**.
+- **Cela amende D14**, qui disait que le propriétaire ne lit pas les données internes des groupes. Il lit désormais une **synthèse** : noms des groupes et des tournois, leur format et leur état, le nombre d'inscrits, les identifiants et pseudos Plato des admins, qui tient la main. Il ne lit toujours **ni les pseudos des joueurs, ni les inscriptions une par une, ni les matchs, ni le journal, ni les liens publics** : les joueurs n'y sont que des nombres. Les routes des tournois restent fermées (`allowOwner` faux, 404, testé).
+- **Lecture seule par construction** : deux routes, `GET /overview` et `GET /overview/tournaments`, réservées au rôle propriétaire (double authentification obligatoire). Un test de politique des routes échoue si une autre méthode apparaît sous `/overview`. L'écran n'a aucun bouton d'action ni lien vers un tournoi. L'assistance déjà prévue par D14 (réinviter un super admin, retirer un membre depuis un groupe) ne change pas : elle n'est pas dans le tableau de bord.
+- **« Actifs »** : des comptes d'admins seulement (le propriétaire est exclu, les joueurs n'ont pas de compte et ne sont pas suivis). _En ligne_ : session vue il y a moins de 15 minutes. _7 et 30 jours_ : dernière requête d'une session encore là, ou dernière connexion réussie du journal de sécurité (gardé 30 jours, D25). Aucune nouvelle donnée n'est collectée.
+- **Inscriptions** : acceptés, en liste d'attente et à valider (un joueur remplacé ne compte plus) ; « joueurs différents » compte un même pseudo une seule fois (clé insensible à la casse). Ce n'est pas un nombre de personnes : un pseudo peut être partagé ou changé.
+- **Tournois** : filtres par état, format, groupe et nom, 50 par page, demandés au serveur. Les groupes et les personnes arrivent en entier : à paginer si la plateforme dépasse quelques centaines de comptes.
+- **Hors périmètre** : courbes d'évolution, export, alertes.
 
 ## D29. Vainqueur sans score, matchs nuls, étapes qui s'enchaînent, journal lisible
 

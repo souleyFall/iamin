@@ -28,6 +28,8 @@ import { GroupGuard } from './groups/group.guard';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsService } from './groups/groups.service';
 import { ClientErrorsController } from './logging/client-errors.controller';
+import { OverviewController } from './overview/overview.controller';
+import { OverviewService } from './overview/overview.service';
 import { PrismaService } from './prisma.service';
 import { EventsService } from './tournaments/events.service';
 import { LiveController } from './tournaments/live.controller';
@@ -71,8 +73,10 @@ export class AppModule {
         FeedbackController,
         PublicFeedbackController,
         ClientErrorsController,
+        OverviewController,
       ],
       providers: [
+        OverviewService,
         { provide: APP_CONFIG, useValue: config },
         PrismaService,
         SessionService,

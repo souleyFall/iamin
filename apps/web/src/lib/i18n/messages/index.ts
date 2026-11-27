@@ -3,6 +3,7 @@ import { auth } from './auth';
 import { common } from './common';
 import { screensBasic } from './screens-basic';
 import { feedback } from './feedback';
+import { overview } from './overview';
 import { play } from './play';
 import { publicPage } from './public';
 import { security } from './security';
@@ -24,6 +25,7 @@ export const PARTS = [
   feedback,
   auth,
   publicPage,
+  overview,
 ] as const;
 
 export const MESSAGES = Object.assign({}, ...PARTS) as typeof common &
@@ -34,6 +36,7 @@ export const MESSAGES = Object.assign({}, ...PARTS) as typeof common &
   typeof security &
   typeof feedback &
   typeof auth &
-  typeof publicPage;
+  typeof publicPage &
+  typeof overview;
 
 export type MessageKey = keyof typeof MESSAGES;
