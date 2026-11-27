@@ -20,6 +20,7 @@ const TABS: Tab[] = [
 
 /** Entrées en plus sur ordinateur seulement : la barre du bas du téléphone n'a pas la place. */
 const OWNER_TABS: Tab[] = [
+  { to: '/apercu', label: 'nav.overview', icon: 'chart' },
   { to: '/super-admins', label: 'nav.superAdmins', icon: 'userPlus' },
   { to: '/retours', label: 'nav.feedback', icon: 'inbox' },
 ];

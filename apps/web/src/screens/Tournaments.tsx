@@ -93,6 +93,12 @@ export function Tournaments() {
         {!loading && !current && user?.role === 'PLATFORM_OWNER' && (
           <p className="card">{t('list.ownerHint')}</p>
         )}
+        {user?.role === 'PLATFORM_OWNER' && (
+          <Link className="key key-wide" to="/apercu">
+            <Icon name="chart" stroke={2.25} />
+            {t('ov.open')}
+          </Link>
+        )}
         {!loading && !current && user?.role === 'MEMBER' && (
           <p className="card">{t('list.memberHint')}</p>
         )}

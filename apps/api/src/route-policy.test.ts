@@ -151,6 +151,17 @@ describe('politique des routes (audit)', () => {
     expect(owner.filter((r) => !r.roles.includes('PLATFORM_OWNER')).map((r) => r.id)).toEqual([]);
   });
 
+  it('le tableau de bord du propriétaire ne fait que lire, et lui seul y accède (D30)', () => {
+    const overview = all.filter((r) => r.path.startsWith('/overview'));
+    expect(overview.map((r) => r.id).sort()).toEqual([
+      'GET /overview',
+      'GET /overview/tournaments',
+    ]);
+    expect(overview.every((r) => !r.isPublic && r.roles.join() === 'PLATFORM_OWNER')).toBe(true);
+    // Aucune route d'écriture : la vue d'ensemble ne permet jamais d'intervenir.
+    expect(overview.filter((r) => !r.id.startsWith('GET '))).toEqual([]);
+  });
+
   it('la boîte de retours se lit, se classe et se vide par le propriétaire seul', () => {
     const inbox = all.filter((r) => r.path.startsWith('/feedback') && r.id !== 'POST /feedback');
     expect(inbox.map((r) => r.id).sort()).toEqual([

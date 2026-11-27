@@ -1116,3 +1116,116 @@ textarea.input {
 .avatar-sm.is-gone {
   opacity: 0.5;
 }
+
+/* ----- Tableau de bord du propriétaire (lecture seule) ----- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+@media (min-width: 960px) {
+  .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.stat dt {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.stat dd {
+  margin: 0;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+.stat-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.chips button[aria-pressed='true'] {
+  border-color: var(--action);
+  background: var(--action);
+  color: var(--action-ink);
+}
+.chip-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.filter-bar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+@media (min-width: 720px) {
+  .filter-bar {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+}
+.filter {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.filter .input {
+  height: 44px;
+  font-size: 16px;
+}
+/* Plus précis que `.rows > li` et `.rows.rows-cards > li`, qui retirent marges et bordures. */
+.rows.rows-cards > li.ov-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+@media (min-width: 960px) {
+  .rows.rows-cards > li.ov-card {
+    margin-bottom: 0;
+  }
+}
+.ov-small {
+  font-size: 14px;
+}
+.ov-person {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}

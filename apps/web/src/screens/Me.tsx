@@ -32,6 +32,9 @@ export function Me() {
         </div>
         {user?.role === 'PLATFORM_OWNER' && (
           <>
+            <Link className="btn btn-primary" to="/apercu">
+              {t('nav.overview')}
+            </Link>
             <Link className="btn btn-accent" to="/super-admins">
               {t('me.inviteSuperAdmin')}
             </Link>

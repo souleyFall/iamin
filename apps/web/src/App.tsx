@@ -12,6 +12,7 @@ import { Login } from './screens/Login';
 import { Me } from './screens/Me';
 import { NewGroup } from './screens/NewGroup';
 import { NewTournament } from './screens/NewTournament';
+import { Overview } from './screens/Overview';
 import { Play } from './screens/Play';
 import { PublicTournament } from './screens/PublicTournament';
 import { Registrations } from './screens/Registrations';
@@ -32,6 +33,7 @@ export function App() {
         <Route path="nouveau" element={<NewTournament />} />
         <Route path="groupe" element={<GroupScreen />} />
         <Route path="groupe/nouveau" element={<NewGroup />} />
+        <Route path="apercu" element={<Overview />} />
         <Route path="super-admins" element={<SuperAdmins />} />
         <Route path="retours" element={<FeedbackInbox />} />
         <Route path="securite" element={<Security />} />

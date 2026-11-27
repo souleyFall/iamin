@@ -238,6 +238,67 @@ export interface MyRegistration {
 
 // ---- Journal -----------------------------------------------------------------------------------
 
+// ---- Tableau de bord du propriétaire (lecture seule, D30) --------------------------------------
+
+export type PersonKind = 'SUPER_ADMIN' | 'ADMIN' | 'NONE';
+
+export interface OverviewPerson {
+  id: string;
+  username: string;
+  platoUsername: string;
+  kind: PersonKind;
+  createdAt: string;
+  /** `null` : aucune activité depuis 30 jours. */
+  lastActiveAt: string | null;
+  groups: { id: string; name: string; role: GroupRole }[];
+}
+
+export interface OverviewGroup {
+  id: string;
+  name: string;
+  createdAt: string;
+  superAdmins: Person[];
+  admins: Person[];
+  tournaments: { total: number; running: number; finished: number };
+  registrations: number;
+  lastTournamentAt: string | null;
+}
+
+export interface Overview {
+  generatedAt: string;
+  accounts: { total: number; superAdmins: number; admins: number };
+  active: { online: number; week: number; month: number };
+  tournaments: { total: number } & Record<TournamentStatus, number>;
+  registrations: {
+    total: number;
+    accepted: number;
+    waitlist: number;
+    pending: number;
+    players: number;
+  };
+  groups: OverviewGroup[];
+  people: OverviewPerson[];
+}
+
+export interface OverviewTournament {
+  id: string;
+  name: string;
+  format: TournamentFormat;
+  status: TournamentStatus;
+  capacity: number;
+  createdAt: string;
+  drawnAt: string | null;
+  group: { id: string; name: string };
+  holder: string | null;
+  counts: { accepted: number; waitlist: number; pending: number };
+}
+
+export interface OverviewTournamentPage {
+  total: number;
+  tournaments: OverviewTournament[];
+  nextBefore: string | null;
+}
+
 export interface JournalEvent {
   id: string;
   type: string;
