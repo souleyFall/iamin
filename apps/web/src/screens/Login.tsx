@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/session';
+import { PrivacyLink } from '../components/PrivacyLink';
 import { useI18n } from '../lib/i18n';
 
 export function Login() {
@@ -127,7 +128,7 @@ export function Login() {
         </button>
       </form>
       <p className="notice-standalone">
-        {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link>
+        {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link> · <PrivacyLink />
       </p>
     </main>
   );

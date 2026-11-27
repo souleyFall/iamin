@@ -1,3 +1,4 @@
+import { PrivacyLink } from '../components/PrivacyLink';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/session';
 import { LanguagePicker } from '../components/LanguagePicker';
@@ -50,6 +51,9 @@ export function Me() {
         <Link className="btn" to="/avis">
           {t('me.giveFeedback')}
         </Link>
+        <p className="hint" style={{ textAlign: 'center' }}>
+          <PrivacyLink />
+        </p>
         <LanguagePicker />
         <div className="field">
           <span className="section-title" style={{ fontSize: 20 }}>

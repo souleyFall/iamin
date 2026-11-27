@@ -151,6 +151,9 @@ model Tournament {
   /// s'inscrire et de voir le nom du tournoi.
   publicSlug   String             @unique
   createdAt    DateTime           @default(now())
+  /// Date et heure prévues, en UTC : chaque écran les affiche dans le fuseau de la personne.
+  /// `null` pour les tournois créés avant que la date soit demandée.
+  startsAt     DateTime?
   /// Points du vainqueur quand l'adversaire déclare forfait (le forfait perd 0).
   forfeitScore Int                @default(1)
   /// Ligue seulement : un match peut finir à égalité (selon le jeu). Choisi à la création, modifiable

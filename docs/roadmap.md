@@ -34,6 +34,7 @@ Une ligne par pull request prévue. L'ordre peut évoluer ; l'état est mis à j
 | 26  | `fix(live)` : reconnexion du direct espacée, délai imposé par le serveur           | fusionnée |
 | 27  | `feat(play)` : vainqueur sans score, matchs nuls, étapes enchaînées, journal       | fusionnée |
 | 28  | `feat(overview)` : tableau de bord du propriétaire, en lecture seule               | fusionnée |
+| 29  | `feat` : date des tournois, page de confidentialité, trois filtres                 | fusionnée |
 
 ## Après
 

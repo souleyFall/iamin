@@ -154,6 +154,8 @@ export interface TournamentSummary {
   /** Ligue : un match peut finir à égalité. Toujours faux en élimination directe. */
   allowDraws: boolean;
   language: TournamentLanguage;
+  /** Date et heure prévues, en UTC ; `null` pour un tournoi sans date. */
+  startsAt: string | null;
   createdAt: string;
   drawnAt: string | null;
   drawSeed: string | null;
@@ -214,6 +216,7 @@ export interface PublicHead {
   format: TournamentFormat;
   status: TournamentStatus;
   language: TournamentLanguage;
+  startsAt: string | null;
   registrationOpen: boolean;
   revision: number;
 }
@@ -288,6 +291,7 @@ export interface OverviewTournament {
   capacity: number;
   createdAt: string;
   drawnAt: string | null;
+  startsAt: string | null;
   group: { id: string; name: string };
   holder: string | null;
   counts: { accepted: number; waitlist: number; pending: number };

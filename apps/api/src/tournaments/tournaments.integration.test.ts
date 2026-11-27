@@ -513,6 +513,7 @@ describe.skipIf(!testDatabaseUrl)('tournois et inscriptions (base réelle)', () 
         format: 'ELIMINATION',
         status: 'REGISTRATION',
         language: 'fr',
+        startsAt: null,
         registrationOpen: true,
       });
       expect((await client().request('GET', '/public/tournaments/' + 'x'.repeat(22))).status).toBe(

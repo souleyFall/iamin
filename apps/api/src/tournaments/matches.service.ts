@@ -445,6 +445,7 @@ export class MatchesService {
         format: true,
         status: true,
         language: true,
+        startsAt: true,
         structure: true,
       },
     });
@@ -455,6 +456,7 @@ export class MatchesService {
       format: t.format,
       status: t.status,
       language: t.language,
+      startsAt: t.startsAt,
       registrationOpen: t.status === TournamentStatus.REGISTRATION,
       revision,
     };

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/session';
 import { ErrorNote } from '../components/ErrorNote';
 import { Icon } from '../components/Icon';
 import { RelayOffer } from '../components/RelayOffer';
+import { When } from '../components/When';
 import { useCurrentGroup } from '../groups/current';
 import { useI18n, type I18n } from '../lib/i18n';
 import { countsLine, FORMAT_KEY, STATUS_CLASS, STATUS_KEY } from '../lib/labels';
@@ -127,6 +128,9 @@ export function Tournaments() {
                         </span>
                       </span>
                       <span className="muted">{t(FORMAT_KEY[tour.format])}</span>
+                      <span className="when-line">
+                        <When value={tour.startsAt} />
+                      </span>
                       <span className="row-head">
                         <span className="tabular">{countsLine(tour.counts, tour.capacity, t)}</span>
                         <span className={relay.className} style={{ fontSize: 13, fontWeight: 600 }}>

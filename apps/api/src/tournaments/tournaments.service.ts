@@ -80,6 +80,8 @@ export class TournamentsService {
       language?: TournamentLanguage;
       /** Ligue : un match peut finir à égalité. Sans effet (toujours faux) en élimination directe. */
       allowDraws?: boolean;
+      /** Date et heure prévues (ISO 8601 avec décalage horaire). */
+      startsAt?: string;
     },
   ) {
     assertLeagueSize(input.format, input.capacity);
@@ -144,6 +146,8 @@ export class TournamentsService {
       /** Ligue seulement, et avant le tirage : les scores à égalité sont-ils acceptés ? */
       allowDraws?: boolean;
       status?: typeof TournamentStatus.REGISTRATION | typeof TournamentStatus.CHECK_IN;
+      /** Modifiable à tout moment (un tournoi se reporte) ; `null` efface la date. */
+      startsAt?: string | null;
     },
   ) {
     await this.prisma.$transaction(async (tx) => {
@@ -302,7 +306,7 @@ export class TournamentsService {
   async publicInfo(slug: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { publicSlug: slug },
-      select: { name: true, format: true, status: true, language: true },
+      select: { name: true, format: true, status: true, language: true, startsAt: true },
     });
     if (!tournament) throw new NotFoundException(TOURNAMENT_NOT_FOUND);
     return { ...tournament, registrationOpen: tournament.status === TournamentStatus.REGISTRATION };
@@ -472,6 +476,7 @@ const tournamentSelect = {
   forfeitScore: true,
   allowDraws: true,
   language: true,
+  startsAt: true,
   createdAt: true,
   drawnAt: true,
   drawSeed: true,

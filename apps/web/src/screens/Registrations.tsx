@@ -2,10 +2,60 @@ import { useState, type FormEvent } from 'react';
 import type { Registration, TournamentLanguage } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { ErrorNote } from '../components/ErrorNote';
+import { When } from '../components/When';
 import { copyText } from '../lib/chat';
+import { deviceTimeZone, isoToLocalInput, localInputToIso } from '../lib/datetime';
 import { LOCALES, useI18n } from '../lib/i18n';
 import { initialOf, isOpenStatus } from '../lib/labels';
 import { useTournamentCtx } from './tournament-context';
+
+/** La date annoncée aux joueurs : le détenteur la change quand le tournoi est reporté. */
+function Schedule({
+  startsAt,
+  canChange,
+  onSave,
+}: {
+  startsAt: string | null;
+  canChange: boolean;
+  onSave: (startsAt: string) => void;
+}) {
+  const { t } = useI18n();
+  const [value, setValue] = useState(() => isoToLocalInput(startsAt));
+  const iso = localInputToIso(value);
+  const changed = iso !== null && value !== isoToLocalInput(startsAt);
+  return (
+    <div className="field">
+      <span className="section-title" style={{ fontSize: 18 }}>
+        {t('when.label')}
+      </span>
+      <p>
+        <When value={startsAt} />
+      </p>
+      {canChange && (
+        <>
+          <input
+            className="input"
+            type="datetime-local"
+            aria-label={t('when.label')}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <p className="hint">{t('when.hint', { zone: deviceTimeZone() })}</p>
+          <button
+            type="button"
+            className="btn"
+            disabled={!changed}
+            onClick={() => {
+              if (iso !== null) onSave(iso);
+            }}
+          >
+            {t('when.save')}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** Le lien à donner aux joueurs : inscription, puis suivi en direct. */
 function ShareLink({
@@ -14,8 +64,12 @@ function ShareLink({
   canChange,
   onLanguage,
   draws,
+  startsAt,
+  onStartsAt,
 }: {
   slug: string;
+  startsAt: string | null;
+  onStartsAt: (startsAt: string) => void;
   language: TournamentLanguage;
   canChange: boolean;
   onLanguage: (language: TournamentLanguage) => void;
@@ -46,6 +100,12 @@ function ShareLink({
           {t('reg.copyRefused')}
         </p>
       )}
+      <Schedule
+        key={startsAt ?? ''}
+        startsAt={startsAt}
+        canChange={canChange}
+        onSave={onStartsAt}
+      />
       <div className="field">
         <span className="section-title" style={{ fontSize: 18 }}>
           {t('lang.label')}
@@ -120,6 +180,8 @@ export function Registrations() {
     <div className="page page-wide desk-grid" style={{ paddingTop: 12 }}>
       <ShareLink
         slug={tournament.publicSlug}
+        startsAt={tournament.startsAt}
+        onStartsAt={(startsAt) => act.mutate({ method: 'PATCH', path: '', body: { startsAt } })}
         language={tournament.language}
         canChange={isHolder}
         onLanguage={(language) => act.mutate({ method: 'PATCH', path: '', body: { language } })}

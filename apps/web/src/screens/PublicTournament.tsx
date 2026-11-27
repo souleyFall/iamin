@@ -14,6 +14,8 @@ import { isBracketView, type PublicView } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ErrorNote } from '../components/ErrorNote';
+import { PrivacyLink } from '../components/PrivacyLink';
+import { When } from '../components/When';
 import { defaultRound, MatchContent, RoundTabs, roundsOf } from '../components/Rounds';
 import { StandingsTable } from '../components/StandingsTable';
 import { I18nProvider, useI18n } from '../lib/i18n';
@@ -121,7 +123,9 @@ function RegisterForm({ slug, onToken }: { slug: string; onToken: (token: string
           maxLength={40}
           required
         />
-        <p className="hint">{t('pub.register.hint')}</p>
+        <p className="hint">
+          {t('pub.register.hint')} <PrivacyLink />
+        </p>
       </div>
       <button
         className="key key-wide"
@@ -265,6 +269,10 @@ function PublicContent({
               {t(FORMAT_KEY[v.format])} ·{' '}
               <span className={STATUS_CLASS[v.status]}>{t(STATUS_KEY[v.status])}</span>
             </p>
+            {/* La date, à l'heure du joueur : l'information qu'il vient chercher avec ce lien. */}
+            <p className="when-line">
+              <When value={v.startsAt} />
+            </p>
           </div>
           {live && (
             <span className="tag tag-live" role="status">
@@ -322,7 +330,7 @@ function PublicContent({
         <div className="page" style={{ marginTop: 'auto' }}>
           <LanguagePicker compact />
           <p className="notice-standalone">
-            {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link>
+            {t('common.disclaimer')} <Link to="/avis">{t('fb.title')}</Link> · <PrivacyLink />
           </p>
         </div>
       </main>

@@ -176,9 +176,16 @@ export function describeEvent(e: JournalEvent, env: JournalEnv): EventView {
         detail = t('journal.d.checkInOpened');
         break;
       }
-      const fields = (
-        ['name', 'capacity', 'language', 'forfeitScore', 'allowDraws', 'status'] as const
-      ).filter((k) => p[k] !== undefined);
+      const editable = [
+        'name',
+        'startsAt',
+        'capacity',
+        'language',
+        'forfeitScore',
+        'allowDraws',
+        'status',
+      ] as const;
+      const fields = editable.filter((k) => p[k] !== undefined);
       detail =
         fields.length > 0
           ? t('journal.d.updated', {

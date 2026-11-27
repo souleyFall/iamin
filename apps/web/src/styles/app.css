@@ -1229,3 +1229,27 @@ textarea.input {
   flex-direction: column;
   min-width: 0;
 }
+
+/* ----- Date d'un tournoi ----- */
+.when-line {
+  font-size: 15px;
+  font-weight: 600;
+}
+.when-line::first-letter {
+  text-transform: uppercase;
+}
+
+/* ----- Page de texte (confidentialité) : une colonne lisible ----- */
+.legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+  line-height: 1.6;
+}
+.legal-list {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 20px;
+  padding-inline-start: 20px;
+  list-style: disc;
+}

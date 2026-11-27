@@ -4,7 +4,9 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 
 **Responsable du traitement** : Souleymane Fall, à titre personnel.
 
-**Contact** : via les « Security advisories » privées du dépôt GitHub (voir `SECURITY.md`). Aucune adresse personnelle n'est publiée.
+**Contact** : pour les joueurs et les admins, le formulaire « Donner mon avis » de l'application (D23) ; pour la sécurité, les « Security advisories » privées du dépôt GitHub (voir `SECURITY.md`). Aucune adresse personnelle n'est publiée. **À régler avant la mise en ligne** : le formulaire ne permet pas de répondre à la personne ; une adresse de contact dédiée est nécessaire.
+
+**Information des personnes** : page publique `/confidentialite` (français, anglais, espagnol, D31). Elle décrit ce que l'application fait réellement : toute évolution de ce registre doit y être reportée.
 
 > Ce document est une analyse de bonne foi, pas un avis juridique. Les durées ci-dessous sont des propositions à confirmer avant la mise en ligne.
 
@@ -30,7 +32,7 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | Données              | Pseudo Plato, statut d'inscription, présence, résultats des matchs, date d'inscription                                                                                                                                                                                               |
 | Personnes concernées | Joueurs (sans compte)                                                                                                                                                                                                                                                                |
 | Destinataires        | Les admins du groupe ; le pseudo et les résultats sont visibles sur la page publique, mais seulement une fois l'inscription validée                                                                                                                                                  |
-| Conservation         | Proposition : 12 mois après la fin du tournoi, puis suppression ou anonymisation                                                                                                                                                                                                     |
+| Conservation         | Aujourd'hui : avec le tournoi, **aucune suppression automatique** (effacement sur demande). Proposition **non encore appliquée** : 12 mois après la fin du tournoi, puis suppression ou anonymisation                                                                                |
 | Minimisation         | Aucun e-mail, aucun nom réel, aucune adresse IP stockée dans la base                                                                                                                                                                                                                 |
 | Droits               | Le joueur annule via son lien personnel ; effacement sur demande à l'admin du groupe                                                                                                                                                                                                 |
 | Suppression          | Annuler ou retirer un joueur supprime sa ligne (aucune trace conservée)                                                                                                                                                                                                              |
@@ -43,7 +45,7 @@ Le RGPD s'applique à toute donnée relative à une personne identifiable, même
 | ------------ | --------------------------------------------------------------------------- |
 | Finalité     | Rendre l'accès à un admin après vérification d'identité par le propriétaire |
 | Données      | Identifiant, pseudo Plato, date de la demande, état du ticket               |
-| Conservation | 30 jours après clôture du ticket                                            |
+| Conservation | Objectif : 30 jours après clôture. **Purge automatique non encore codée**   |
 
 ## Traitement 4 : journal des événements d'un tournoi
 

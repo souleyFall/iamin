@@ -212,6 +212,28 @@ describe.skipIf(!testDatabaseUrl)('vue d’ensemble du propriétaire (base réel
     });
   });
 
+  it('« Inscriptions » réunit les inscriptions ouvertes et le pointage, et la date est donnée', async () => {
+    const { open } = await world();
+    await t.prisma.tournament.updateMany({
+      where: { name: 'Coupe en cours' },
+      data: { status: 'CHECK_IN' },
+    });
+    await t.prisma.tournament.update({
+      where: { id: open.id },
+      data: { startsAt: new Date('2026-12-05T19:30:00Z') },
+    });
+    const owner = await loggedIn('owner');
+    const list = (await owner.request('GET', '/overview/tournaments?status=REGISTRATION')).body as {
+      total: number;
+      tournaments: { name: string; startsAt: string | null }[];
+    };
+    expect(list.total).toBe(2);
+    expect(Object.fromEntries(list.tournaments.map((x) => [x.name, x.startsAt]))).toEqual({
+      'Coupe ouverte': '2026-12-05T19:30:00.000Z',
+      'Coupe en cours': null,
+    });
+  });
+
   it('pagine par 50 sans doublon, et refuse un curseur ou un filtre inconnu', async () => {
     const { a } = await world();
     await t.prisma.tournament.createMany({
